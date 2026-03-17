@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Look-UP</string>
+    <string name="title_activity_main">Look-UP</string>
+    <string name="package_name">com.wowpark18.lookup</string>
+    <string name="custom_url_scheme">com.wowpark18.lookup</string>
+</resources>
