@@ -5,43 +5,94 @@ import { useState, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Environment } from '@react-three/drei';
 
-// [솔로몬 & 다니엘 MVP 제안] 기본 아바타 뼈대에 유저 수치 대입 모델
+// [솔로몬 & 다니엘 MVP 제안] 프리미엄 3D 스캔 아바타 (Hologram Glass Effect)
 function BasicAvatar({ measurements }: { measurements: any }) {
-    // 추출된 치수를 기반으로 비율(Scale) 계산
     const heightScale = measurements?.height ? measurements.height / 175 : 1;
     const shoulderScale = measurements?.shoulder ? measurements.shoulder / 45 : 1;
     const chestScale = measurements?.chest ? measurements.chest / 95 : 1;
     const legScale = measurements?.legLength ? measurements.legLength / 100 : 1;
 
+    // 고급스러운 홀로그램 유리 재질 (하이엔드 스타트업 느낌)
+    const HologramMaterial = () => (
+        <meshPhysicalMaterial 
+            color="#b388ff" 
+            emissive="#311b92"
+            emissiveIntensity={0.2}
+            transmission={0.9} 
+            opacity={1} 
+            transparent
+            roughness={0.1} 
+            metalness={0.4} 
+            ior={1.4} 
+            thickness={2}
+            clearcoat={1}
+            clearcoatRoughness={0.1}
+        />
+    );
+
+    // 내부 와이어프레임 뼈대 (테크니컬한 분석 느낌)
+    const WireframeMaterial = () => (
+        <meshBasicMaterial color="#00ffcc" wireframe transparent opacity={0.15} />
+    );
+
     return (
         <group scale={[1, heightScale, 1]} position={[0, -1, 0]}>
-            <mesh position={[0, 1, 0]} castShadow> {/* 골반 */}
-                <boxGeometry args={[0.4 * shoulderScale, 0.3, 0.25 * chestScale]} />
-                <meshStandardMaterial color="#5a189a" />
+            {/* 골반 */}
+            <mesh position={[0, 1.1, 0]} castShadow> 
+                <cylinderGeometry args={[0.25 * chestScale, 0.28 * shoulderScale, 0.3, 32]} />
+                <HologramMaterial />
             </mesh>
-            <mesh position={[0, 1.5, 0]} castShadow> {/* 가슴/상체 */}
-                <boxGeometry args={[0.5 * shoulderScale, 0.7, 0.3 * chestScale]} />
-                <meshStandardMaterial color="#9d4edd" />
+            <mesh position={[0, 1.1, 0]}>
+                <cylinderGeometry args={[0.24 * chestScale, 0.27 * shoulderScale, 0.29, 16]} />
+                <WireframeMaterial />
             </mesh>
-            <mesh position={[0, 2.1, 0]} castShadow> {/* 머리 */}
-                <sphereGeometry args={[0.2, 32, 32]} />
-                <meshStandardMaterial color="#e0aaff" />
+
+            {/* 상체 */}
+            <mesh position={[0, 1.6, 0]} castShadow> 
+                <cylinderGeometry args={[0.35 * shoulderScale, 0.25 * chestScale, 0.7, 32]} />
+                <HologramMaterial />
             </mesh>
-            <mesh position={[-0.3 * shoulderScale - 0.05, 1.4, 0]} castShadow> {/* 왼팔 */}
-                <cylinderGeometry args={[0.08, 0.06, 0.8, 16]} />
-                <meshStandardMaterial color="#7b2cbf" />
+            <mesh position={[0, 1.6, 0]}>
+                <cylinderGeometry args={[0.34 * shoulderScale, 0.24 * chestScale, 0.69, 16]} />
+                <WireframeMaterial />
             </mesh>
-            <mesh position={[0.3 * shoulderScale + 0.05, 1.4, 0]} castShadow> {/* 오른팔 */}
-                <cylinderGeometry args={[0.08, 0.06, 0.8, 16]} />
-                <meshStandardMaterial color="#7b2cbf" />
+
+            {/* 머리 */}
+            <mesh position={[0, 2.2, 0]} castShadow> 
+                <sphereGeometry args={[0.18, 32, 32]} />
+                <HologramMaterial />
             </mesh>
-            <mesh position={[-0.12, 0.4 * legScale, 0]} castShadow> {/* 왼다리 */}
-                <cylinderGeometry args={[0.09, 0.07, 0.9 * legScale, 16]} />
-                <meshStandardMaterial color="#3c096c" />
+            <mesh position={[0, 2.2, 0]}>
+                <sphereGeometry args={[0.17, 16, 16]} />
+                <WireframeMaterial />
             </mesh>
-            <mesh position={[0.12, 0.4 * legScale, 0]} castShadow> {/* 오른다리 */}
-                <cylinderGeometry args={[0.09, 0.07, 0.9 * legScale, 16]} />
-                <meshStandardMaterial color="#3c096c" />
+            <mesh position={[0, 2.02, 0]}> {/* 목 */}
+                <cylinderGeometry args={[0.07, 0.08, 0.15, 16]} />
+                <HologramMaterial />
+            </mesh>
+
+            {/* 왼팔 */}
+            <mesh position={[-0.3 * shoulderScale - 0.1, 1.5, 0]} rotation={[0, 0, 0.1]} castShadow> 
+                <capsuleGeometry args={[0.08, 0.7, 32, 32]} />
+                <HologramMaterial />
+            </mesh>
+            
+            {/* 오른팔 */}
+            <mesh position={[0.3 * shoulderScale + 0.1, 1.5, 0]} rotation={[0, 0, -0.1]} castShadow> 
+                <capsuleGeometry args={[0.08, 0.7, 32, 32]} />
+                <HologramMaterial />
+            </mesh>
+
+            {/* 왼다리 */}
+            <mesh position={[-0.14, 0.5 * legScale, 0]} castShadow> 
+                <capsuleGeometry args={[0.1, 0.9 * legScale, 32, 32]} />
+                <HologramMaterial />
+            </mesh>
+
+            {/* 오른다리 */}
+            <mesh position={[0.14, 0.5 * legScale, 0]} castShadow> 
+                <capsuleGeometry args={[0.1, 0.9 * legScale, 32, 32]} />
+                <HologramMaterial />
             </mesh>
         </group>
     );
@@ -63,7 +114,8 @@ export default function Scan3D() {
         let interval: ReturnType<typeof setInterval>;
 
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+            // [느헤미야 & 솔로몬 수정] 더 넓은 범위 스캔과 전신 촬영, 타인 촬영을 위한 후면(environment) 카메라 명시
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
                 .then(stream => {
                     streamRef = stream;
                     if (videoRef.current) {
@@ -236,10 +288,10 @@ export default function Scan3D() {
                     )}
                 </AnimatePresence>
 
-                {/* Bottom Status Panel */}
+                {/* Bottom Status Panel - UI 겹침 버그 하단 마진 상향 조정 */}
                 <div style={{
-                    position: 'absolute', bottom: isFinished ? '40px' : '80px', left: '20px', right: '20px',
-                    textAlign: 'center', zIndex: 20
+                    position: 'absolute', bottom: isFinished ? '120px' : '120px', left: '20px', right: '20px',
+                    textAlign: 'center', zIndex: 100
                 }}>
                     {!isFinished ? (
                         <div className="glass-panel" style={{ padding: '24px', background: 'rgba(10, 10, 15, 0.7)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px' }}>
