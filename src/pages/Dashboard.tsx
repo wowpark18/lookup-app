@@ -34,8 +34,20 @@ function AvatarModel({ panY, zoom, profileId, styleColor }: { panY: number; zoom
             return { height: 0.75, armLength: 0.85, legLength: 0.85, chestDepth: 0.95, thighWidth: 0.95, headSize: 1.25, hipSize: 0.95 };
         }
         try {
-            const data = localStorage.getItem('lookUpMeasurements');
-            if (data) return JSON.parse(data);
+            const dataStr = localStorage.getItem('lookUpMeasurements');
+            if (dataStr) {
+                const raw = JSON.parse(dataStr);
+                // Scan3D에서 cm 단위로 수집된 값을 Three.js 스케일 비율(1.0) 기준으로 변환합니다.
+                return { 
+                    height: (raw.height || 175) / 175, 
+                    armLength: (raw.armLength || 60) / 60, 
+                    legLength: (raw.legLength || 102) / 102, 
+                    chestDepth: (raw.chest || 95) / 95, 
+                    thighWidth: (raw.hip || 98) / 98, 
+                    headSize: 1.0, 
+                    hipSize: (raw.hip || 98) / 98 
+                };
+            }
         } catch (e) {
             console.error(e);
         }

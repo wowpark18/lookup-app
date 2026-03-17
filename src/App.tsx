@@ -10,7 +10,7 @@ import BottomNav from './components/BottomNav';
 
 function AnimatedRoutes() {
   const location = useLocation();
-  const showNav = location.pathname !== '/';
+  const showNav = location.pathname !== '/' && location.pathname !== '/scan';
 
   return (
     <>
