@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Activity, ScanFace, Focus, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, Activity, ScanFace, Focus, CheckCircle2, AlertTriangle, Smartphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
@@ -103,6 +103,7 @@ export default function Scan3D() {
     const [progress, setProgress] = useState(0);
     const [statusText, setStatusText] = useState("카메라 환경과 AI 스캔 엔진(MediaPipe)을 준비 중입니다...");
     const [isAgreed, setIsAgreed] = useState(false);
+    const [showGuide, setShowGuide] = useState(true);
     const [isFinished, setIsFinished] = useState(false);
     const [scannedData, setScannedData] = useState<any>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -120,7 +121,7 @@ export default function Scan3D() {
     });
 
     useEffect(() => {
-        if (!isAgreed || isFinished) return;
+        if (!isAgreed || showGuide || isFinished) return;
 
         let cameraRef: any = null;
         let pose: any = null;
@@ -273,8 +274,73 @@ export default function Scan3D() {
                     </p>
                     <div style={{ display: 'flex', gap: '16px' }}>
                         <button onClick={() => navigate(-1)} style={{ flex: 1, padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', fontWeight: 600 }}>동의 안 함</button>
-                        <button onClick={() => setIsAgreed(true)} style={{ flex: 1, padding: '16px', borderRadius: '12px', background: 'var(--primary)', color: 'white', border: 'none', fontWeight: 600, boxShadow: '0 4px 20px rgba(157, 78, 221, 0.4)' }}>동의 후 스캔 시작</button>
+                        <button onClick={() => setIsAgreed(true)} style={{ flex: 1, padding: '16px', borderRadius: '12px', background: 'var(--primary)', color: 'white', border: 'none', fontWeight: 600, boxShadow: '0 4px 20px rgba(157, 78, 221, 0.4)' }}>동의 후 진행</button>
                     </div>
+                </div>
+            </motion.div>
+        );
+    }
+
+    if (isAgreed && showGuide) {
+        return (
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} style={{ padding: '24px', height: '100vh', display: 'flex', flexDirection: 'column', background: '#0a0a0a', position: 'relative' }}>
+                <div style={{ position: 'absolute', top: '24px', left: '24px', zIndex: 20 }} onClick={() => setShowGuide(false)}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        <ChevronLeft size={24} color="white" />
+                    </div>
+                </div>
+                
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingTop: '40px' }}>
+                    <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'white', marginBottom: '8px', textAlign: 'center' }}>정밀 스캔 지침 📸</h2>
+                    <p style={{ color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginBottom: '40px', fontSize: '14px', wordBreak: 'keep-all' }}>AI가 정확한 신체 비율을 분석할 수 있도록<br />아래 가이드를 반드시 지켜주세요!</p>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', display: 'flex', alignItems: 'flex-start', gap: '16px', border: '1px solid rgba(255,50,50,0.3)', background: 'rgba(255,0,0,0.05)' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,50,50,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <AlertTriangle size={20} color="#ff4444" />
+                            </div>
+                            <div>
+                                <h4 style={{ color: 'white', margin: '0 0 6px 0', fontSize: '15px', fontWeight: 700 }}>거울 셀카 절대 금지!</h4>
+                                <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0, fontSize: '13px', lineHeight: 1.5, wordBreak: 'keep-all' }}>
+                                    거울에 비친 모습을 스캔하면 AI가 거리를 차각하며, 폰을 들고 있는 팔 때문에 골격(관절) 구조가 심하게 왜곡됩니다.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', display: 'flex', alignItems: 'flex-start', gap: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(157,78,221,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <Smartphone size={20} color="var(--primary)" />
+                            </div>
+                            <div>
+                                <h4 style={{ color: 'white', margin: '0 0 6px 0', fontSize: '15px', fontWeight: 700 }}>핸드폰을 세워두고 촬영</h4>
+                                <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0, fontSize: '13px', lineHeight: 1.5, wordBreak: 'keep-all' }}>
+                                    의자나 책상 등 안정적인 곳에 핸드폰을 세워두고, 후면 카메라로 물러서서 촬영해 주세요. (타인이 찍어주면 가장 좋습니다)
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', display: 'flex', alignItems: 'flex-start', gap: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(157,78,221,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <ScanFace size={20} color="var(--primary)" />
+                            </div>
+                            <div>
+                                <h4 style={{ color: 'white', margin: '0 0 6px 0', fontSize: '15px', fontWeight: 700 }}>전신(머리~발끝) 노출 필수</h4>
+                                <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0, fontSize: '13px', lineHeight: 1.5, wordBreak: 'keep-all' }}>
+                                    프레임 안에 머리부터 발끝까지 온전히 들어가야 키와 다리길이를 정확히 스케일링 할 수 있습니다. 가능하면 딱 붙는 옷을 입어주세요.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style={{ paddingBottom: '24px' }}>
+                    <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setShowGuide(false)}
+                        style={{ width: '100%', padding: '18px', borderRadius: '16px', background: 'var(--primary)', color: 'white', fontWeight: 700, fontSize: '16px', border: 'none', boxShadow: '0 8px 30px rgba(157, 78, 221, 0.4)', marginTop: '24px' }}
+                    >
+                        확인했습니다 (카메라 켜기)
+                    </motion.button>
                 </div>
             </motion.div>
         );
