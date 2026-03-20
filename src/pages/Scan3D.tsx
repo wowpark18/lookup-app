@@ -348,7 +348,7 @@ export default function Scan3D() {
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ type: 'spring', bounce: 0.4 }}
-                            style={{ width: '100%', height: '100%', position: 'absolute', background: 'radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0a0a0a 100%)', display: 'flex', flexDirection: 'column', padding: '100px 24px 24px 24px' }}
+                            style={{ width: '100%', height: '100%', position: 'absolute', background: 'radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0a0a0a 100%)', display: 'flex', flexDirection: 'column', padding: '100px 24px 200px 24px', overflowY: 'auto', zIndex: 10 }}
                         >
                             <h2 style={{ color: 'white', fontSize: '28px', fontWeight: 800, marginBottom: '8px', textAlign: 'center' }}>스캔 완료</h2>
                             <p style={{ color: 'var(--primary)', textAlign: 'center', marginBottom: '32px', fontWeight: 600 }}>생체 데이터 추출 성공</p>
@@ -358,7 +358,7 @@ export default function Scan3D() {
                                     {scannedData && Object.entries(scannedData).map(([k, v]) => (
                                         <div key={k} style={{ padding: '16px', borderRadius: '16px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.05)' }}>
                                             <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: '4px', fontWeight: 600 }}>{k}</div>
-                                            <div style={{ fontSize: '24px', fontWeight: 800, color: 'white' }}>{v as number}<span style={{ fontSize: '12px', fontWeight: 400, color: 'rgba(255,255,255,0.4)', marginLeft: '4px' }}>cm</span></div>
+                                            <div style={{ fontSize: '24px', fontWeight: 800, color: 'white' }}>{Math.round(v as number)}<span style={{ fontSize: '12px', fontWeight: 400, color: 'rgba(255,255,255,0.4)', marginLeft: '4px' }}>cm</span></div>
                                         </div>
                                     ))}
                                 </div>
