@@ -85,15 +85,17 @@ export default function Scan3D() {
                         frameCount++;
 
                         // 프레임 진척도에 따른 로딩바 갱신
-                        const currentProgress = Math.min(100, Math.floor((frameCount / 60) * 100)); // 약 2초간 60프레임 스캔
+                        const currentProgress = Math.min(100, Math.floor((frameCount / 180) * 100)); // 약 6초간 180프레임 스캔 (신뢰도 상승 효과)
                         setProgress(currentProgress);
 
-                        if (currentProgress < 30) setStatusText("포인트 클라우드 추론 중 (관절 랜드마크 추출)");
-                        else if (currentProgress < 60) setStatusText("딥러닝 네트워크 분석 중 (AI 뎁스 계산)");
-                        else if (currentProgress < 90) setStatusText("3D 아바타 체형 매핑 및 폴리곤 동기화");
+                        if (currentProgress < 15) setStatusText("초기화 중 (Initializing Neural Sensors)");
+                        else if (currentProgress < 40) setStatusText("관절 랜드마크 추출 중 (Extracting Pose Landmarks)");
+                        else if (currentProgress < 65) setStatusText("공간 깊이 추론 중 (Calculating Spacial Depth & Volume)");
+                        else if (currentProgress < 90) setStatusText("데이터 정규화 (Normalizing Real-world Measurements)");
+                        else if (currentProgress < 100) setStatusText("AI 체형 매핑 및 데이터 동기화 (Mapping Body Shape)");
 
                         if (currentProgress === 100 && !isFinished) {
-                            setStatusText("스캔이 성공적으로 완료되었습니다!");
+                            setStatusText("스캔이 성공적으로 완료되었습니다! (Extraction Complete)");
                             
                             // 평균 치수 (정규화된 비율값)를 실제 cm로 추정 변환 (가상 베이스 175cm 기준)
                             const avgShoulder = (accumulatedShoulder / frameCount);
@@ -127,19 +129,25 @@ export default function Scan3D() {
                             });
 
                             // [Audio Success Feedback]
-                            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-                            const oscillator = audioCtx.createOscillator();
-                            const gainNode = audioCtx.createGain();
-                            oscillator.connect(gainNode);
-                            gainNode.connect(audioCtx.destination);
-                            oscillator.type = 'sine';
-                            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
-                            oscillator.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1);
-                            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-                            gainNode.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.05);
-                            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-                            oscillator.start();
-                            oscillator.stop(audioCtx.currentTime + 0.5);
+                            try {
+                                const audioCtx = (window as any).lookupAudioCtx;
+                                if (audioCtx) {
+                                    const oscillator = audioCtx.createOscillator();
+                                    const gainNode = audioCtx.createGain();
+                                    oscillator.connect(gainNode);
+                                    gainNode.connect(audioCtx.destination);
+                                    oscillator.type = 'sine';
+                                    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+                                    oscillator.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1);
+                                    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                                    gainNode.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.05);
+                                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                                    oscillator.start();
+                                    oscillator.stop(audioCtx.currentTime + 0.5);
+                                }
+                            } catch (e) {
+                                console.error('Audio playback failed', e);
+                            }
 
                             setTimeout(() => {
                                 if (cameraRef) cameraRef.stop();
@@ -257,7 +265,14 @@ export default function Scan3D() {
                 <div style={{ paddingBottom: '24px' }}>
                     <motion.button
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => setShowGuide(false)}
+                        onClick={() => {
+                            if (!(window as any).lookupAudioCtx) {
+                                try {
+                                    (window as any).lookupAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                                } catch (e) {}
+                            }
+                            setShowGuide(false);
+                        }}
                         style={{ width: '100%', padding: '18px', borderRadius: '16px', background: 'var(--primary)', color: 'white', fontWeight: 700, fontSize: '16px', border: 'none', boxShadow: '0 8px 30px rgba(157, 78, 221, 0.4)', marginTop: '24px' }}
                     >
                         확인했습니다 (카메라 켜기)
