@@ -2,101 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Activity, ScanFace, Focus, CheckCircle2, AlertTriangle, Smartphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, ContactShadows, Environment } from '@react-three/drei';
 
-// [솔로몬 & 다니엘 MVP 제안] 프리미엄 3D 스캔 아바타 (Hologram Glass Effect)
-function BasicAvatar({ measurements }: { measurements: any }) {
-    const heightScale = measurements?.height ? measurements.height / 175 : 1;
-    const shoulderScale = measurements?.shoulder ? measurements.shoulder / 45 : 1;
-    const chestScale = measurements?.chest ? measurements.chest / 95 : 1;
-    const legScale = measurements?.legLength ? measurements.legLength / 100 : 1;
-
-    // 고급스러운 홀로그램 유리 재질 (하이엔드 스타트업 느낌)
-    const HologramMaterial = () => (
-        <meshPhysicalMaterial 
-            color="#b388ff" 
-            emissive="#311b92"
-            emissiveIntensity={0.2}
-            transmission={0.9} 
-            opacity={1} 
-            transparent
-            roughness={0.1} 
-            metalness={0.4} 
-            ior={1.4} 
-            thickness={2}
-            clearcoat={1}
-            clearcoatRoughness={0.1}
-        />
-    );
-
-    // 내부 와이어프레임 뼈대 (테크니컬한 분석 느낌)
-    const WireframeMaterial = () => (
-        <meshBasicMaterial color="#00ffcc" wireframe transparent opacity={0.15} />
-    );
-
-    return (
-        <group scale={[1, heightScale, 1]} position={[0, -1, 0]}>
-            {/* 골반 */}
-            <mesh position={[0, 1.1, 0]} castShadow> 
-                <cylinderGeometry args={[0.25 * chestScale, 0.28 * shoulderScale, 0.3, 32]} />
-                <HologramMaterial />
-            </mesh>
-            <mesh position={[0, 1.1, 0]}>
-                <cylinderGeometry args={[0.24 * chestScale, 0.27 * shoulderScale, 0.29, 16]} />
-                <WireframeMaterial />
-            </mesh>
-
-            {/* 상체 */}
-            <mesh position={[0, 1.6, 0]} castShadow> 
-                <cylinderGeometry args={[0.35 * shoulderScale, 0.25 * chestScale, 0.7, 32]} />
-                <HologramMaterial />
-            </mesh>
-            <mesh position={[0, 1.6, 0]}>
-                <cylinderGeometry args={[0.34 * shoulderScale, 0.24 * chestScale, 0.69, 16]} />
-                <WireframeMaterial />
-            </mesh>
-
-            {/* 머리 */}
-            <mesh position={[0, 2.2, 0]} castShadow> 
-                <sphereGeometry args={[0.18, 32, 32]} />
-                <HologramMaterial />
-            </mesh>
-            <mesh position={[0, 2.2, 0]}>
-                <sphereGeometry args={[0.17, 16, 16]} />
-                <WireframeMaterial />
-            </mesh>
-            <mesh position={[0, 2.02, 0]}> {/* 목 */}
-                <cylinderGeometry args={[0.07, 0.08, 0.15, 16]} />
-                <HologramMaterial />
-            </mesh>
-
-            {/* 왼팔 */}
-            <mesh position={[-0.3 * shoulderScale - 0.1, 1.5, 0]} rotation={[0, 0, 0.1]} castShadow> 
-                <capsuleGeometry args={[0.08, 0.7, 32, 32]} />
-                <HologramMaterial />
-            </mesh>
-            
-            {/* 오른팔 */}
-            <mesh position={[0.3 * shoulderScale + 0.1, 1.5, 0]} rotation={[0, 0, -0.1]} castShadow> 
-                <capsuleGeometry args={[0.08, 0.7, 32, 32]} />
-                <HologramMaterial />
-            </mesh>
-
-            {/* 왼다리 */}
-            <mesh position={[-0.14, 0.5 * legScale, 0]} castShadow> 
-                <capsuleGeometry args={[0.1, 0.9 * legScale, 32, 32]} />
-                <HologramMaterial />
-            </mesh>
-
-            {/* 오른다리 */}
-            <mesh position={[0.14, 0.5 * legScale, 0]} castShadow> 
-                <capsuleGeometry args={[0.1, 0.9 * legScale, 32, 32]} />
-                <HologramMaterial />
-            </mesh>
-        </group>
-    );
-}
 
 export default function Scan3D() {
     const navigate = useNavigate();
@@ -220,10 +126,25 @@ export default function Scan3D() {
                                 }
                             });
 
+                            // [Audio Success Feedback]
+                            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                            const oscillator = audioCtx.createOscillator();
+                            const gainNode = audioCtx.createGain();
+                            oscillator.connect(gainNode);
+                            gainNode.connect(audioCtx.destination);
+                            oscillator.type = 'sine';
+                            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+                            oscillator.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1);
+                            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                            gainNode.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.05);
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                            oscillator.start();
+                            oscillator.stop(audioCtx.currentTime + 0.5);
+
                             setTimeout(() => {
                                 if (cameraRef) cameraRef.stop();
                                 setIsFinished(true);
-                            }, 1000);
+                            }, 600);
                         }
                     } else if (progress < 100) {
                         setStatusText("사람을 화면 정중앙에 전신이 나오게 위치해 주세요.");
@@ -257,7 +178,7 @@ export default function Scan3D() {
             if (cameraRef) cameraRef.stop();
             if (pose) pose.close();
         };
-    }, [isAgreed, isFinished]);
+    }, [isAgreed, showGuide, isFinished]);
 
     if (!isAgreed) {
         return (
@@ -409,36 +330,24 @@ export default function Scan3D() {
                     ) : (
                         <motion.div
                             key="result"
-                            initial={{ opacity: 0, scale: 0.8 }}
+                            initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ type: 'spring', bounce: 0.4 }}
-                            style={{ width: '100%', height: '100%', position: 'absolute', background: 'radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0a0a0a 100%)' }}
+                            style={{ width: '100%', height: '100%', position: 'absolute', background: 'radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0a0a0a 100%)', display: 'flex', flexDirection: 'column', padding: '100px 24px 24px 24px' }}
                         >
-                            <Canvas camera={{ position: [0, 1, 4], fov: 50 }}>
-                                <ambientLight intensity={0.5} />
-                                <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1} castShadow />
-                                <Environment preset="city" />
-                                
-                                <BasicAvatar measurements={scannedData} />
-                                
-                                <ContactShadows position={[0, -1, 0]} opacity={0.4} scale={10} blur={2} far={4} />
-                                <OrbitControls enablePan={false} enableZoom={true} minDistance={2} maxDistance={6} maxPolarAngle={Math.PI / 2 + 0.1} autoRotate={true} autoRotateSpeed={2} />
-                            </Canvas>
-
-                            {/* 우측 수치 데이터 패널 */}
-                            <motion.div 
-                                initial={{ x: 50, opacity: 0 }} 
-                                animate={{ x: 0, opacity: 1 }} 
-                                transition={{ delay: 0.5 }}
-                                style={{ position: 'absolute', right: '24px', top: '80px', display: 'flex', flexDirection: 'column', gap: '8px' }}
-                            >
-                                {scannedData && Object.entries(scannedData).slice(0, 4).map(([k, v]) => (
-                                    <div key={k} className="glass-panel" style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(157, 78, 221, 0.3)', backdropFilter: 'blur(10px)', background: 'rgba(0,0,0,0.5)', textAlign: 'right' }}>
-                                        <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>{k}</span>
-                                        <div style={{ fontSize: '16px', fontWeight: 700, color: 'white' }}>{v as number}<span style={{ fontSize: '12px', fontWeight: 400, color: 'rgba(255,255,255,0.5)' }}> cm</span></div>
-                                    </div>
-                                ))}
-                            </motion.div>
+                            <h2 style={{ color: 'white', fontSize: '28px', fontWeight: 800, marginBottom: '8px', textAlign: 'center' }}>스캔 완료</h2>
+                            <p style={{ color: 'var(--primary)', textAlign: 'center', marginBottom: '32px', fontWeight: 600 }}>생체 데이터 추출 성공</p>
+                            
+                            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '24px', padding: '24px', border: '1px solid rgba(157, 78, 221, 0.2)' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                    {scannedData && Object.entries(scannedData).map(([k, v]) => (
+                                        <div key={k} style={{ padding: '16px', borderRadius: '16px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: '4px', fontWeight: 600 }}>{k}</div>
+                                            <div style={{ fontSize: '24px', fontWeight: 800, color: 'white' }}>{v as number}<span style={{ fontSize: '12px', fontWeight: 400, color: 'rgba(255,255,255,0.4)', marginLeft: '4px' }}>cm</span></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
