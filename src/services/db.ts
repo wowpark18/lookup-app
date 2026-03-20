@@ -1,4 +1,4 @@
-import { db, auth } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { doc, setDoc, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 
 export interface UserProfile {

@@ -211,6 +211,14 @@ export default function Scan3D() {
                             localStorage.setItem('lookUpMeasurements', JSON.stringify(realMeasurements));
                             setScannedData(realMeasurements);
 
+                            import('../lib/firebase').then(({ auth }) => {
+                                if (auth.currentUser) {
+                                    import('../services/db').then(({ saveUserProfile }) => {
+                                        saveUserProfile(auth.currentUser!.uid, { measurements: realMeasurements }).catch(console.error);
+                                    });
+                                }
+                            });
+
                             setTimeout(() => {
                                 if (cameraRef) cameraRef.stop();
                                 setIsFinished(true);

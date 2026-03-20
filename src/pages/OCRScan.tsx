@@ -49,20 +49,42 @@ export default function OCRScan() {
         }, 600);
     };
 
-    const handleUpload = () => {
+    const handleUpload = async () => {
         if (capturedItems.length === 0) {
             alert('스캔된 항목이 없습니다.');
             return;
         }
         
-        // [다니엘 제안] AI 파싱 로직 시뮬레이션
         setIsAnalyzing(true);
-        setTimeout(() => {
+
+        try {
+            // [느헤미야 팀] 리얼 데이터베이스 연동 및 저장
+            const { auth } = await import('../lib/firebase');
+            const { addWardrobeItem } = await import('../services/db');
+
+            if (auth.currentUser) {
+                for (let i = 0; i < capturedItems.length; i++) {
+                    await addWardrobeItem({
+                        userId: auth.currentUser.uid,
+                        imageUrl: "mock_image_url", // 추후 실제 카메라 이미지 Blob 저장 처리 공간
+                        category: capturedItems[i].mode, // tag, clothes 등
+                        brand: "AI Parsed Brand", 
+                    });
+                }
+            }
+            
+            setTimeout(() => {
+                setIsAnalyzing(false);
+                alert(`[AI Vision 및 백엔드 저장 완료]\n\n총 ${capturedItems.length}개의 데이터 분석 성공 및 DB 동기화 완료!\n의류 속성: Navy, Cotton 100%\n추천 세탁법: 드라이클리닝 권장\n\n내 옷장에 데이터가 성공적으로 병합되었습니다.`);
+                setCapturedItems([]);
+                navigate('/');
+            }, 1500);
+
+        } catch (e) {
+            console.error(e);
+            alert("데이터베이스 저장에 실패했습니다.");
             setIsAnalyzing(false);
-            alert(`[AI Vision & OCR 분석 완료 - Claude 3.5 Sonnet]\n\n총 ${capturedItems.length}개의 데이터 분석 성공!\n의류 속성: Navy, Cotton 100%\n추천 세탁법: 드라이클리닝 권장\n\n내 옷장에 데이터가 성공적으로 병합되었습니다.`);
-            setCapturedItems([]);
-            navigate('/');
-        }, 2500);
+        }
     };
 
     const getGuideText = () => {

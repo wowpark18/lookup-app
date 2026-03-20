@@ -2,15 +2,24 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, Wand2 } from 'lucide-react';
+import { auth } from '../lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export default function Splash() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        // 3초 후 대시보드로 이동
         const timer = setTimeout(() => {
-            navigate('/dashboard');
-        }, 3000);
+            const unsubscribe = onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    navigate('/dashboard');
+                } else {
+                    navigate('/login');
+                }
+            });
+            return () => unsubscribe();
+        }, 2000); // 2초 후 인증 상태 확인
+
         return () => clearTimeout(timer);
     }, [navigate]);
 
