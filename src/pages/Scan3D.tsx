@@ -95,37 +95,37 @@ export default function Scan3D() {
     };
 
     const renderStep1 = () => (
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col justify-center">
-            <h2 className="text-2xl font-extrabold text-white mb-2 text-center">기본 체형 데이터 입력</h2>
-            <p className="text-gray-400 text-center mb-8 text-sm">AI가 정확한 3D 비례를 계산하기 위해<br/>꼭 필요한 기초 데이터입니다.</p>
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col pt-8 pb-8">
+            <h2 className="text-3xl font-extrabold text-white mb-3">기본 체형 데이터 <span className="text-primary">입력</span></h2>
+            <p className="text-gray-400 mb-10 text-sm leading-relaxed">AI가 정확한 3D 비례를 계산하기 위해<br/>꼭 필요한 기초 데이터입니다.</p>
             
-            <div className="glass-panel p-6 rounded-3xl space-y-4">
+            <div className="bg-white/5 border border-white/10 p-7 rounded-[32px] flex flex-col gap-6">
                 <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">키 (Height)</label>
-                    <div className="relative">
-                        <input type="number" placeholder="예: 175" value={bodyData.height} onChange={e => setBodyData({...bodyData, height: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors" />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">cm</span>
+                    <label className="block text-sm font-bold text-gray-400 mb-2">키 (Height)</label>
+                    <div className="relative flex items-center">
+                        <input type="number" placeholder="예: 175" value={bodyData.height} onChange={e => setBodyData({...bodyData, height: e.target.value})} className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-primary transition-colors pr-14" />
+                        <span className="absolute right-5 text-gray-500 font-medium">cm</span>
                     </div>
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">몸무게 (Weight)</label>
-                    <div className="relative">
-                        <input type="number" placeholder="예: 70" value={bodyData.weight} onChange={e => setBodyData({...bodyData, weight: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors" />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">kg</span>
+                    <label className="block text-sm font-bold text-gray-400 mb-2">몸무게 (Weight)</label>
+                    <div className="relative flex items-center">
+                        <input type="number" placeholder="예: 70" value={bodyData.weight} onChange={e => setBodyData({...bodyData, weight: e.target.value})} className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-primary transition-colors pr-14" />
+                        <span className="absolute right-5 text-gray-500 font-medium">kg</span>
                     </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">성별</label>
-                        <select value={bodyData.gender} onChange={e => setBodyData({...bodyData, gender: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary appearance-none max-h-40 overflow-y-auto">
-                            <option value="">선택</option>
-                            <option value="male">남성</option>
-                            <option value="female">여성</option>
+                <div className="flex gap-4">
+                    <div className="flex-1">
+                        <label className="block text-sm font-bold text-gray-400 mb-2">성별</label>
+                        <select value={bodyData.gender} onChange={e => setBodyData({...bodyData, gender: e.target.value})} className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-primary appearance-none">
+                            <option value="">성별 선택</option>
+                            <option value="male">남성 (Male)</option>
+                            <option value="female">여성 (Female)</option>
                         </select>
                     </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">나이</label>
-                        <input type="number" placeholder="예: 28" value={bodyData.age} onChange={e => setBodyData({...bodyData, age: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary" />
+                    <div className="flex-1">
+                        <label className="block text-sm font-bold text-gray-400 mb-2">나이</label>
+                        <input type="number" placeholder="예: 28" value={bodyData.age} onChange={e => setBodyData({...bodyData, age: e.target.value})} className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-primary" />
                     </div>
                 </div>
             </div>
@@ -133,7 +133,7 @@ export default function Scan3D() {
             <button 
                 onClick={() => setStep(2)}
                 disabled={!bodyData.height || !bodyData.weight || !bodyData.gender}
-                className="primary-button mt-8 w-full py-4 rounded-xl font-bold bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-8 w-full py-5 rounded-2xl font-bold bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-xl shadow-primary/20"
             >
                 다음: 사진 업로드
             </button>
@@ -141,9 +141,9 @@ export default function Scan3D() {
     );
 
     const renderStep2 = () => (
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col pt-8">
-            <h2 className="text-2xl font-extrabold text-white mb-2 text-center">전신 사진 업로드</h2>
-            <p className="text-gray-400 text-center mb-8 text-sm break-keep">타이트한 옷을 입고 촬영해주시면<br/>AI가 훨씬 더 정교하게 아바타를 생성합니다.</p>
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col pt-8 pb-8">
+            <h2 className="text-3xl font-extrabold text-white mb-3">전신 사진 <span className="text-primary">업로드</span></h2>
+            <p className="text-gray-400 mb-8 text-sm break-keep leading-relaxed">타이트한 옷을 입고 촬영해주시면<br/>AI가 훨씬 더 정교하게 아바타를 생성합니다.</p>
             
             <div className="grid grid-cols-2 gap-4 flex-1">
                 {[
@@ -152,29 +152,28 @@ export default function Scan3D() {
                     { id: 'left', label: '좌측면 (Left)' },
                     { id: 'right', label: '우측면 (Right)' }
                 ].map(view => (
-                    <div key={view.id} className="relative aspect-[3/4] bg-black/40 rounded-2xl border-2 border-dashed border-white/10 overflow-hidden flex flex-col items-center justify-center group hover:border-primary/50 transition-colors">
+                    <div key={view.id} className="relative aspect-[3/4] bg-white/5 rounded-3xl border flex flex-col items-center justify-center overflow-hidden border-dashed border-white/20 hover:border-primary/50 transition-colors">
                         {photos[view.id] ? (
                             <>
                                 <img src={photos[view.id]!} alt={view.label} className="w-full h-full object-cover opacity-80" />
-                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <div className="text-white flex flex-col items-center">
-                                        <Camera size={24} className="mb-2" />
-                                        <span className="text-xs font-bold">다시 촬영</span>
-                                    </div>
+                                <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                    <Camera size={24} className="mb-2 text-white" />
+                                    <span className="text-xs font-bold text-white">다시 촬영</span>
                                 </div>
                             </>
                         ) : (
-                            <div className="text-center p-4">
-                                <UserCircle2 size={32} className="mx-auto mb-2 text-white/20" />
-                                <div className="text-sm font-bold text-white/60">{view.label}</div>
-                                <div className="text-[10px] text-white/40 mt-1">터치하여 촬영/업로드</div>
+                            <div className="flex flex-col items-center justify-center p-4 h-full pointer-events-none text-center">
+                                <UserCircle2 size={36} className="text-white/20 mb-3" />
+                                <div className="text-sm font-bold text-white/80 whitespace-nowrap">{view.label}</div>
+                                <div className="text-[10px] text-white/40 mt-1 whitespace-nowrap">터치하여 업로드</div>
                             </div>
                         )}
                         <input 
                             type="file" 
                             accept="image/*" 
                             capture="environment"
-                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            title="사진 업로드"
                             onChange={(e) => handlePhotoUpload(view.id, e)}
                         />
                     </div>
@@ -184,14 +183,14 @@ export default function Scan3D() {
             <div className="mt-8 flex gap-4">
                 <button 
                     onClick={() => setStep(1)}
-                    className="flex-1 py-4 rounded-xl font-bold bg-white/10 text-white"
+                    className="flex-1 py-5 rounded-2xl font-bold bg-white/10 text-white text-lg hover:bg-white/20 transition-colors"
                 >
                     이전으로
                 </button>
                 <button 
                     onClick={startGeneration}
                     disabled={!photos.front}
-                    className="flex-1 py-4 rounded-xl font-bold bg-primary text-white disabled:opacity-50"
+                    className="flex-1 py-5 rounded-2xl font-bold bg-primary text-white disabled:opacity-50 text-lg shadow-xl shadow-primary/20"
                 >
                     AI 생성 시작
                 </button>
@@ -253,22 +252,27 @@ export default function Scan3D() {
     );
 
     return (
-        <div style={{ padding: '24px', height: '100vh', display: 'flex', flexDirection: 'column', background: '#0a0a0a', position: 'relative', overflowY: 'auto', overflowX: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '24px', zIndex: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div onClick={() => step > 1 && step < 3 ? setStep(step - 1) : navigate(-1)} style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+        <div className="min-h-[100dvh] bg-[#0a0a0a] flex flex-col relative overflow-x-hidden">
+            {/* Header / Top Navigation */}
+            <div className="absolute top-0 left-0 right-0 p-6 z-20 flex justify-between items-center bg-gradient-to-b from-[#0a0a0a] to-transparent">
+                <button 
+                    onClick={() => step > 1 && step < 3 ? setStep(step - 1) : navigate(-1)} 
+                    className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center cursor-pointer hover:bg-white/20 transition-colors border border-white/5"
+                >
                     <ChevronLeft size={24} color="white" />
-                </div>
-                <div className="glass-button" style={{ padding: '8px 16px', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px' }}>
-                    <span style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '12px' }}>AI Avatar Engine</span>
+                </button>
+                <div className="px-5 py-2.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-full">
+                    <span className="text-primary font-bold text-xs tracking-wider">AI Avatar Engine</span>
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col relative mt-12 w-full max-w-md mx-auto">
+            {/* Scrollable Content Wrapper */}
+            <div className="flex-1 w-full max-w-md mx-auto px-6 overflow-y-auto pb-10 pt-24 custom-scrollbar">
                 <AnimatePresence mode="wait">
-                    {step === 1 && <motion.div key="step1" className="flex-1 flex flex-col h-full">{renderStep1()}</motion.div>}
-                    {step === 2 && <motion.div key="step2" className="flex-1 flex flex-col h-full">{renderStep2()}</motion.div>}
-                    {step === 3 && <motion.div key="step3" className="flex-1 flex flex-col h-full">{renderStep3()}</motion.div>}
-                    {step === 4 && <motion.div key="step4" className="flex-1 flex flex-col h-full">{renderStep4()}</motion.div>}
+                    {step === 1 && <motion.div key="step1" className="min-h-full flex flex-col">{renderStep1()}</motion.div>}
+                    {step === 2 && <motion.div key="step2" className="min-h-full flex flex-col">{renderStep2()}</motion.div>}
+                    {step === 3 && <motion.div key="step3" className="min-h-full flex flex-col">{renderStep3()}</motion.div>}
+                    {step === 4 && <motion.div key="step4" className="min-h-full flex flex-col">{renderStep4()}</motion.div>}
                 </AnimatePresence>
             </div>
         </div>
