@@ -1,9 +1,64 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar as CalendarIcon, Filter, Heart, ChevronLeft, ChevronRight, Share2, MoreHorizontal, Sun, MapPin, Shirt, Tag, Sparkles } from 'lucide-react';
+import { getWardrobeItems } from '../services/db';
+import { auth } from '../lib/firebase';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, useGLTF, Environment } from '@react-three/drei';
+import * as THREE from 'three';
+
+// 3D Avatar Component for OOTD
+function OOTDAvatar({ styleColor }: { styleColor: string }) {
+    const { scene } = useGLTF('/assets/Xbot.glb');
+    
+    useEffect(() => {
+        if (!scene) return;
+        scene.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                if (mesh.name === 'Alpha_Surface' && mesh.material) {
+                    const mat = mesh.material as THREE.MeshStandardMaterial;
+                    if (mat.color) { mat.color.set(styleColor); mat.needsUpdate = true; }
+                }
+            }
+        });
+        
+        // Simple T-pose to A-pose
+        const leftArm = scene.getObjectByName('mixamorigLeftArm');
+        const rightArm = scene.getObjectByName('mixamorigRightArm');
+        if (leftArm) leftArm.rotation.z = -1.2;
+        if (rightArm) rightArm.rotation.z = 1.2;
+    }, [scene, styleColor]);
+
+    return <primitive object={scene} scale={1.5} position={[0, -1.5, 0]} />;
+}
 
 export default function OOTD() {
     const [selectedDate, setSelectedDate] = useState(2);
+    const [ootdItems, setOotdItems] = useState<any[]>([
+        { type: '아우터', name: '캐시미어 롱 코트', brand: 'STUDIO TOMBOY', color: '#1a1a1a' },
+        { type: '상의', name: '오버핏 옥스포드 셔츠', brand: 'POLO RALPH LAUREN', color: '#ffffff' },
+        { type: '하의', name: '와이드 데님 팬츠', brand: 'LEVI\'S', color: '#4b6cb7' },
+        { type: '신발', name: '클래식 로퍼', brand: 'GUCCI', color: '#3e2723' }
+    ]);
+
+    useEffect(() => {
+        // 백엔드 연동: Firebase DB에서 실제 사용자 옷장 데이터 로딩 (OCR 스캔 기반)
+        if (auth.currentUser) {
+            getWardrobeItems(auth.currentUser.uid).then(items => {
+                if (items && items.length > 0) {
+                    const mappedItems = items.map(dbItem => ({
+                        type: dbItem.category,
+                        name: '스마트 클로젯 아이템',
+                        brand: dbItem.brand || '내 브랜드',
+                        color: '#666666',
+                        imageUrl: dbItem.imageUrl
+                    }));
+                    setOotdItems(mappedItems);
+                }
+            });
+        }
+    }, [selectedDate]);
 
     // 임시 달력 데이터 생성
     const dates = Array.from({ length: 14 }, (_, i) => {
@@ -15,13 +70,6 @@ export default function OOTD() {
             isToday: i + 1 === 2
         };
     });
-
-    const ootdItems = [
-        { type: '아우터', name: '캐시미어 롱 코트', brand: 'STUDIO TOMBOY', color: '#1a1a1a' },
-        { type: '상의', name: '오버핏 옥스포드 셔츠', brand: 'POLO RALPH LAUREN', color: '#ffffff' },
-        { type: '하의', name: '와이드 데님 팬츠', brand: 'LEVI\'S', color: '#4b6cb7' },
-        { type: '신발', name: '클래식 로퍼', brand: 'GUCCI', color: '#3e2723' }
-    ];
 
     return (
         <motion.div
@@ -113,9 +161,15 @@ export default function OOTD() {
                         <div style={{ width: '100%', height: '380px', background: 'linear-gradient(180deg, rgba(20,20,25,1) 0%, rgba(40,30,50,1) 100%)', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {/* Abstract silhouette or graphic replacing the old image */}
                             <motion.div animate={{ opacity: [0.5, 0.8, 0.5] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 40%, rgba(157,78,221,0.2) 0%, transparent 60%)' }} />
-                            <div style={{ textAlign: 'center', zIndex: 2 }}>
-                                <Shirt size={64} color="rgba(255,255,255,0.1)" style={{ marginBottom: '16px' }} />
-                                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>3D 스캔 혹은 사진이 표시되는 영역</p>
+                            <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, zIndex: 1 }}>
+                                <Canvas camera={{ position: [0, 1, 3.5], fov: 50 }}>
+                                    <ambientLight intensity={0.8} />
+                                    <directionalLight position={[5, 5, 5]} intensity={1.5} />
+                                    <Environment preset="city" />
+                                    {/* Using a solid matching color for the OOTD context based on items or default blue */}
+                                    <OOTDAvatar styleColor="#3a5a9b" />
+                                    <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={2} maxPolarAngle={Math.PI / 2.2} minPolarAngle={Math.PI / 2.2} />
+                                </Canvas>
                             </div>
 
                             {/* Overlay Info Layer */}
