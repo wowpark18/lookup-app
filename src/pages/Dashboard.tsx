@@ -3,7 +3,7 @@ import { Camera, Sparkles, User, Settings, Info, CloudRain, ChevronRight, Chevro
 import { useNavigate } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, useGLTF, Environment } from '@react-three/drei';
-import { Suspense, Component, useEffect, useState, useMemo, useRef } from 'react';
+import { Suspense, Component, useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import type { ReactNode, WheelEvent, TouchEvent } from 'react';
 import * as THREE from 'three';
 
@@ -166,7 +166,7 @@ export default function Dashboard() {
     const [measurements, setMeasurements] = useState(() => {
         const saved = localStorage.getItem('lookUpMeasurements');
         if (saved) {
-            try { return JSON.parse(saved); } catch (e) { }
+            try { return JSON.parse(saved); } catch { /* ignore error safely */ }
         }
         return {
             height: 175,
@@ -190,14 +190,10 @@ export default function Dashboard() {
         const saved = localStorage.getItem('lookUpPersonalColor');
         return saved || 'Summer Cool';
     });
-    const [personalColorStatus, setPersonalColorStatus] = useState<'scan' | 'photo' | 'manual'>('manual');
-
-    useEffect(() => {
-        // Initial check for status
-        const savedStatus = localStorage.getItem('lookUpPersonalColorStatus') as any;
-        if (savedStatus) setPersonalColorStatus(savedStatus);
-    }, []);
-
+    const [personalColorStatus, setPersonalColorStatus] = useState<'scan' | 'photo' | 'manual'>(() => {
+        const savedStatus = localStorage.getItem('lookUpPersonalColorStatus');
+        return (savedStatus as 'scan' | 'photo' | 'manual') || 'manual';
+    });
     const personalColorTypes = [
         { id: 'Spring Warm', label: '봄 웜톤', gradient: 'linear-gradient(135deg, #FF9E7D, #FFCF81)', colors: ['#FF9E7D', '#FFCF81', '#FFEB94'] },
         { id: 'Summer Cool', label: '여름 쿨톤', gradient: 'linear-gradient(135deg, #B9E9FF, #D6B9FF)', colors: ['#B9E9FF', '#D6B9FF', '#FFB9D6'] },
@@ -205,12 +201,12 @@ export default function Dashboard() {
         { id: 'Winter Cool', label: '겨울 쿨톤', gradient: 'linear-gradient(135deg, #2E3192, #1BFFFF)', colors: ['#2E3192', '#1BFFFF', '#FF00FF'] }
     ];
 
-    const handlePersonalColorChange = (type: string, status: 'scan' | 'photo' | 'manual' = 'manual') => {
+    const handlePersonalColorChange = useCallback((type: string, status: 'scan' | 'photo' | 'manual' = 'manual') => {
         setPersonalColor(type);
         setPersonalColorStatus(status);
         localStorage.setItem('lookUpPersonalColor', type);
         localStorage.setItem('lookUpPersonalColorStatus', status);
-    };
+    }, []);
 
     // 3D 스캔 데이터 감지하여 1차 진단 (초기 1회)
     useEffect(() => {
@@ -219,9 +215,9 @@ export default function Dashboard() {
 
         if (hasScanned && !hasStatus) {
             // 3D 스캔 정보를 기반으로 한 1차 임의 진단 (실제는 피부톤 센서 데이터 활용 가정)
-            handlePersonalColorChange('Summer Cool', 'scan');
+            setTimeout(() => handlePersonalColorChange('Summer Cool', 'scan'), 0);
         }
-    }, []);
+    }, [handlePersonalColorChange]);
 
     // 팝업창(모달) 오픈 시 배경 스크롤 잠금
     useEffect(() => {
@@ -258,11 +254,12 @@ export default function Dashboard() {
     }, [showProfileMenu]);
 
     // 위치 기반 날씨 호출 Effect
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [weather, setWeather] = useState<{ temp: number; text: string; icon: any; color: string } | null>(null);
 
     useEffect(() => {
         if (!navigator.geolocation) {
-            setWeather({ temp: 16, text: '위치 확인 불가', icon: Cloud, color: '#A9B2C3' });
+            setTimeout(() => setWeather({ temp: 16, text: '위치 확인 불가', icon: Cloud, color: '#A9B2C3' }), 0);
             return;
         }
 

@@ -33,9 +33,10 @@ export default function Login() {
                 });
                 navigate('/dashboard');
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error);
-            setErrorMsg(error.message || '인증에 실패했습니다. 이메일과 비밀번호를 확인해주세요.');
+            const err = error as Error;
+            setErrorMsg(err.message || '인증에 실패했습니다. 이메일과 비밀번호를 확인해주세요.');
         } finally {
             setIsLoading(false);
         }
@@ -51,7 +52,7 @@ export default function Login() {
                 name: 'Guest User',
             });
             navigate('/dashboard');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error);
             setErrorMsg('게스트 로그인에 실패했습니다. 관리자에게 문의하세요.');
         } finally {

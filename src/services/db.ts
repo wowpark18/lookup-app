@@ -24,6 +24,7 @@ export interface WardrobeItem {
     category: string; // 'top', 'bottom', 'outer', 'shoes'
     brand?: string;
     size?: string;
+    color?: string;
     createdAt: Date;
 }
 

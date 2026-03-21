@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar as CalendarIcon, Filter, Heart, ChevronLeft, ChevronRight, Share2, MoreHorizontal, Sun, MapPin, Shirt, Tag, Sparkles } from 'lucide-react';
+import { Calendar as CalendarIcon, Filter, Heart, MoreHorizontal, Sun, Shirt, Sparkles } from 'lucide-react';
 import { getWardrobeItems } from '../services/db';
 import { auth } from '../lib/firebase';
 import { Canvas } from '@react-three/fiber';
@@ -8,17 +8,33 @@ import { OrbitControls, useGLTF, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 
 // 3D Avatar Component for OOTD
-function OOTDAvatar({ styleColor }: { styleColor: string }) {
+function OOTDAvatar({ topColor, bottomColor }: { topColor: string, bottomColor: string }) {
     const { scene } = useGLTF('/assets/Xbot.glb');
     
     useEffect(() => {
         if (!scene) return;
+        
+        // Very basic simulation of coloring Top and Bottom parts
         scene.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
                 const mesh = child as THREE.Mesh;
                 if (mesh.name === 'Alpha_Surface' && mesh.material) {
                     const mat = mesh.material as THREE.MeshStandardMaterial;
-                    if (mat.color) { mat.color.set(styleColor); mat.needsUpdate = true; }
+                    // Note: Xbot has a single mesh for Alpha_Surface so we can't easily split top/bottom nicely without specific UV mapping.
+                    // As a simulation, we just mix or use topColor to tint the entire surface.
+                    if (mat.color) { 
+                        mat.color.set(topColor || '#e0e0e0'); 
+                        mat.needsUpdate = true; 
+                    }
+                }
+                
+                // If there are joints, maybe tint them with bottomColor?
+                if (mesh.name === 'Alpha_Joints' && mesh.material) {
+                     const mat = mesh.material as THREE.MeshStandardMaterial;
+                     if (mat.color) {
+                         mat.color.set(bottomColor || '#222222');
+                         mat.needsUpdate = true;
+                     }
                 }
             }
         });
@@ -28,19 +44,29 @@ function OOTDAvatar({ styleColor }: { styleColor: string }) {
         const rightArm = scene.getObjectByName('mixamorigRightArm');
         if (leftArm) leftArm.rotation.z = -1.2;
         if (rightArm) rightArm.rotation.z = 1.2;
-    }, [scene, styleColor]);
+    }, [scene, topColor, bottomColor]);
 
     return <primitive object={scene} scale={1.5} position={[0, -1.5, 0]} />;
 }
 
+interface OOTDWardrobeItem {
+    id: string;
+    type: string;
+    name: string;
+    brand: string;
+    color: string;
+    imageUrl?: string;
+}
+
 export default function OOTD() {
     const [selectedDate, setSelectedDate] = useState(2);
-    const [ootdItems, setOotdItems] = useState<any[]>([
-        { type: '아우터', name: '캐시미어 롱 코트', brand: 'STUDIO TOMBOY', color: '#1a1a1a' },
-        { type: '상의', name: '오버핏 옥스포드 셔츠', brand: 'POLO RALPH LAUREN', color: '#ffffff' },
-        { type: '하의', name: '와이드 데님 팬츠', brand: 'LEVI\'S', color: '#4b6cb7' },
-        { type: '신발', name: '클래식 로퍼', brand: 'GUCCI', color: '#3e2723' }
-    ]);
+    const [wardrobeItems, setWardrobeItems] = useState<OOTDWardrobeItem[]>([]);
+    
+    // 현재 아바타가 입고 있는 아이템 리스트 (Category별 1개씩)
+    const [ootdItems, setOotdItems] = useState<OOTDWardrobeItem[]>([]);
+    
+    // 옷장 탭 카테고리
+    const [wardrobeCategory, setWardrobeCategory] = useState<'all' | 'top' | 'bottom' | 'outer' | 'shoes'>('all');
 
     useEffect(() => {
         // 백엔드 연동: Firebase DB에서 실제 사용자 옷장 데이터 로딩 (OCR 스캔 기반)
@@ -48,13 +74,22 @@ export default function OOTD() {
             getWardrobeItems(auth.currentUser.uid).then(items => {
                 if (items && items.length > 0) {
                     const mappedItems = items.map(dbItem => ({
-                        type: dbItem.category,
-                        name: '스마트 클로젯 아이템',
-                        brand: dbItem.brand || '내 브랜드',
-                        color: '#666666',
+                        id: dbItem.id || Math.random().toString(),
+                        type: dbItem.category, // 'top', 'bottom', 'outer', 'shoes'
+                        name: `${dbItem.category.toUpperCase()} 아이템`,
+                        brand: dbItem.brand || '내 옷장',
+                        color: dbItem.color || '#ffffff',
                         imageUrl: dbItem.imageUrl
                     }));
-                    setOotdItems(mappedItems);
+                    setWardrobeItems(mappedItems);
+                    
+                    // 초기 OOTD 설정 시뮬레이션
+                    const top = mappedItems.find(i => i.type === 'top');
+                    const bottom = mappedItems.find(i => i.type === 'bottom');
+                    const initialOOTD = [];
+                    if (top) initialOOTD.push(top);
+                    if (bottom) initialOOTD.push(bottom);
+                    setOotdItems(initialOOTD);
                 }
             });
         }
@@ -70,6 +105,27 @@ export default function OOTD() {
             isToday: i + 1 === 2
         };
     });
+    
+    // 옷 입히기 로직 (토글 처리)
+    const handleEquipItem = (item: OOTDWardrobeItem) => {
+        setOotdItems(prev => {
+            // 같은 타입(상의, 하의 등)의 아이템이 이미 있으면 교체
+            const filtered = prev.filter(i => i.type !== item.type);
+            // 클릭한 항목이 이미 입혀진 항목과 동일하다면 뺀 채로 둠 (토글 off)
+            const isAlreadyEquipped = prev.some(i => i.id === item.id);
+            if (isAlreadyEquipped) {
+                return filtered;
+            } else {
+                return [...filtered, item];
+            }
+        });
+    };
+    
+    // 착장 색상 추출
+    const currentTop = ootdItems.find(i => i.type === 'top');
+    const currentBottom = ootdItems.find(i => i.type === 'bottom');
+    const displayTopColor = currentTop?.color || '#3a5a9b';
+    const displayBottomColor = currentBottom?.color || '#222222';
 
     return (
         <motion.div
@@ -95,23 +151,8 @@ export default function OOTD() {
                 </div>
             </div>
 
-            {/* Month & Nav Controls */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 24px 16px 24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <h3 className="outfit text-gradient" style={{ fontSize: '24px', fontWeight: 800 }}>March 2026</h3>
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <div style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', cursor: 'pointer' }}>
-                        <ChevronLeft size={18} />
-                    </div>
-                    <div style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', cursor: 'pointer' }}>
-                        <ChevronRight size={18} />
-                    </div>
-                </div>
-            </div>
-
             {/* Premium Horizontal Calendar */}
-            <div style={{ padding: '0 24px', marginBottom: '32px' }}>
+            <div style={{ padding: '0 24px', marginBottom: '24px' }}>
                 <div className="glass-panel" style={{
                     padding: '16px 16px', borderRadius: '24px', display: 'flex', gap: '16px',
                     overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none'
@@ -156,18 +197,16 @@ export default function OOTD() {
                     style={{ padding: '0 24px', flex: 1, display: 'flex', flexDirection: 'column' }}
                 >
                     {/* Look of the Day Card */}
-                    <div className="glass-panel" style={{ borderRadius: '32px', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
+                    <div className="glass-panel" style={{ borderRadius: '32px', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 40px rgba(0,0,0,0.3)', marginBottom: '24px' }}>
                         {/* Fashion Image / Mirror Placeholder */}
-                        <div style={{ width: '100%', height: '380px', background: 'linear-gradient(180deg, rgba(20,20,25,1) 0%, rgba(40,30,50,1) 100%)', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {/* Abstract silhouette or graphic replacing the old image */}
+                        <div style={{ width: '100%', height: '360px', background: 'linear-gradient(180deg, rgba(20,20,25,1) 0%, rgba(40,30,50,1) 100%)', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <motion.div animate={{ opacity: [0.5, 0.8, 0.5] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 40%, rgba(157,78,221,0.2) 0%, transparent 60%)' }} />
                             <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, zIndex: 1 }}>
                                 <Canvas camera={{ position: [0, 1, 3.5], fov: 50 }}>
                                     <ambientLight intensity={0.8} />
                                     <directionalLight position={[5, 5, 5]} intensity={1.5} />
                                     <Environment preset="city" />
-                                    {/* Using a solid matching color for the OOTD context based on items or default blue */}
-                                    <OOTDAvatar styleColor="#3a5a9b" />
+                                    <OOTDAvatar topColor={displayTopColor} bottomColor={displayBottomColor} />
                                     <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={2} maxPolarAngle={Math.PI / 2.2} minPolarAngle={Math.PI / 2.2} />
                                 </Canvas>
                             </div>
@@ -178,18 +217,14 @@ export default function OOTD() {
                                     <div>
                                         <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                                             <span style={{ fontSize: '10px', background: 'rgba(255,0,110,0.2)', color: 'var(--secondary)', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid rgba(255,0,110,0.3)' }}>BUSINESS CASUAL</span>
-                                            <span style={{ fontSize: '10px', background: 'rgba(157, 78, 221, 0.2)', color: 'var(--primary)', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid rgba(157, 78, 221, 0.4)' }}>✨ AI TPO 매칭 98%</span>
+                                            <span style={{ fontSize: '10px', background: 'rgba(157, 78, 221, 0.2)', color: 'var(--primary)', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid rgba(157, 78, 221, 0.4)' }}>✨ AI 매칭 98%</span>
                                         </div>
-                                        <h4 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '6px', color: 'white' }}>오피스 & 미팅 룩</h4>
+                                        <h4 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '6px', color: 'white' }}>오늘의 착장</h4>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'rgba(255,255,255,0.7)', fontSize: '11px', fontWeight: 500 }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Sun size={14} color="#FFD166" /> 맑음 18°C</div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={14} /> 강남 오피스 타운 <span style={{fontSize:'9px', opacity:0.5}}>(위치정보 동의됨)</span></div>
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '12px' }}>
-                                        <div className="hover-scale" style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
-                                            <Share2 size={18} color="white" />
-                                        </div>
                                         <div className="hover-scale" style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
                                             <Heart size={18} fill="var(--secondary)" color="var(--secondary)" />
                                         </div>
@@ -198,58 +233,112 @@ export default function OOTD() {
                             </div>
                         </div>
 
-                        {/* Outfit Components Breakdown */}
+                        {/* Current Outfit Items */}
                         <div style={{ background: 'rgba(255,255,255,0.02)', padding: '24px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                <h5 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-muted)' }}>착장 상세 정보</h5>
-                                <span style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer', borderBottom: '1px solid var(--primary)' }}>다른 코디 추천받기(AI)</span>
+                                <h5 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-muted)' }}>현재 입은 옷 ({ootdItems.length}개)</h5>
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {ootdItems.length === 0 && (
+                                    <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textAlign: 'center', margin: '20px 0' }}>아래 옷장에서 옷을 선택해 입혀보세요!</p>
+                                )}
                                 {ootdItems.map((item, idx) => (
-                                    <div key={idx} style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.03)' }}>
-                                        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '16px', position: 'relative' }}>
-                                            {/* Simulate item color hint */}
-                                            <div style={{ position: 'absolute', bottom: '6px', right: '6px', width: '10px', height: '10px', borderRadius: '50%', background: item.color, border: '1px solid rgba(255,255,255,0.2)' }} />
-                                            <Tag size={20} color="var(--primary)" opacity={0.6} />
+                                    <div key={idx} style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '16px', position: 'relative' }}>
+                                            <div style={{ position: 'absolute', bottom: '2px', right: '2px', width: '12px', height: '12px', borderRadius: '50%', background: item.color, border: '2px solid rgba(0,0,0,0.8)' }} />
+                                            <Shirt size={16} color="var(--primary)" opacity={0.6} />
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                                <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--primary)', border: '1px solid var(--primary)', padding: '2px 6px', borderRadius: '6px' }}>{item.type}</span>
+                                                <span style={{ fontSize: '9px', fontWeight: 600, color: 'var(--primary)', border: '1px solid var(--primary)', padding: '2px 6px', borderRadius: '6px' }}>{item.type.toUpperCase()}</span>
                                                 <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>{item.brand}</span>
                                             </div>
-                                            <dt style={{ fontSize: '14px', fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>{item.name}</dt>
+                                            <dt style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>{item.name}</dt>
                                         </div>
-                                        <MoreHorizontal size={20} color="rgba(255,255,255,0.3)" />
+                                        <div onClick={() => handleEquipItem(item)} style={{ cursor: 'pointer', padding: '6px' }}>
+                                            <MoreHorizontal size={20} color="rgba(255,255,255,0.3)" />
+                                        </div>
                                     </div>
                                 ))}
-                            </div>
-
-                            {/* [솔로몬 제안] 추가 구매 유도 (C-Commerce 영역) */}
-                            <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                    <div>
-                                        <h5 style={{ fontSize: '14px', fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}><Sparkles size={16} color="var(--secondary)" /> 이 코디에 부족한 아이템 제안</h5>
-                                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>내 옷장에 없는 매칭 아이템을 AI가 찾았습니다.</p>
-                                    </div>
-                                </div>
-                                
-                                <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px' }}>
-                                    {[1, 2].map((i) => (
-                                        <div key={i} style={{ minWidth: '140px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '12px', border: '1px solid rgba(157, 78, 221, 0.2)' }}>
-                                            <div style={{ width: '100%', height: '80px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
-                                                <Shirt size={24} color="rgba(255,255,255,0.2)" />
-                                            </div>
-                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>무신사 스토어</div>
-                                            <div style={{ fontSize: '13px', fontWeight: 600, color: 'white', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>블랙 캐시미어 머플러</div>
-                                            <div style={{ fontSize: '12px', color: 'var(--secondary)', fontWeight: 700, marginTop: '4px' }}>₩49,000</div>
-                                        </div>
-                                    ))}
-                                </div>
                             </div>
                         </div>
                     </div>
                 </motion.div>
             </AnimatePresence>
+
+            {/* 디지털 옷장 고도화: 내 옷장 섹션 (화면 하단) */}
+            <div style={{ padding: '0 24px', flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Shirt size={20} color="var(--secondary)" /> 디지털 옷장
+                    </h3>
+                </div>
+
+                {/* Categories */}
+                <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '12px', scrollbarWidth: 'none' }}>
+                    {['all', 'top', 'bottom', 'outer', 'shoes'].map(category => (
+                        <div
+                            key={category}
+                            onClick={() => setWardrobeCategory(category as 'all' | 'top' | 'bottom' | 'outer' | 'shoes')}
+                            style={{
+                                padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                                background: wardrobeCategory === category ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                                color: wardrobeCategory === category ? 'white' : 'var(--text-muted)',
+                                border: wardrobeCategory === category ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                                flexShrink: 0
+                            }}
+                        >
+                            {category.toUpperCase()}
+                        </div>
+                    ))}
+                </div>
+
+                {/* Wardrobe Items Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginTop: '8px' }}>
+                    {wardrobeItems.length === 0 && (
+                        <div style={{ gridColumn: 'span 2', textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.3)' }}>
+                            <p style={{ fontSize: '14px', marginBottom: '8px' }}>아직 등록된 옷이 없습니다.</p>
+                            <p style={{ fontSize: '12px' }}>홈 화면에서 스캔을 통해 옷을 등록해주세요.</p>
+                        </div>
+                    )}
+                    
+                    {wardrobeItems
+                        .filter(item => wardrobeCategory === 'all' || item.type === wardrobeCategory)
+                        .map((item) => {
+                            const isEquipped = ootdItems.some(i => i.id === item.id);
+                            return (
+                                <motion.div
+                                    key={item.id}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => handleEquipItem(item)}
+                                    className="glass-panel"
+                                    style={{
+                                        padding: '16px', borderRadius: '16px', border: isEquipped ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.05)',
+                                        background: isEquipped ? 'rgba(157, 78, 221, 0.1)' : 'rgba(255,255,255,0.02)',
+                                        position: 'relative', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center'
+                                    }}
+                                >
+                                    {isEquipped && (
+                                        <div style={{ position: 'absolute', top: '8px', right: '8px', background: 'var(--primary)', color: 'white', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Sparkles size={10} />
+                                        </div>
+                                    )}
+                                    
+                                    <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px', border: `3px solid ${item.color}` }}>
+                                        <Shirt size={28} color="rgba(255,255,255,0.8)" />
+                                    </div>
+                                    <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'white', marginBottom: '4px', textAlign: 'center' }}>{item.brand}</h4>
+                                    <p style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center' }}>{item.type.toUpperCase()}</p>
+                                    
+                                    <div style={{ marginTop: '12px', padding: '6px 16px', background: isEquipped ? 'rgba(255,255,255,0.1)' : 'var(--primary)', borderRadius: '12px', fontSize: '11px', fontWeight: 600, color: 'white' }}>
+                                        {isEquipped ? '벗기' : '입히기'}
+                                    </div>
+                                </motion.div>
+                            )
+                        })}
+                </div>
+            </div>
+            
         </motion.div>
     );
 }

@@ -25,7 +25,7 @@ export default function Scan3D() {
 
     const [progress, setProgress] = useState(0);
     const [statusText, setStatusText] = useState("");
-    const [scannedData, setScannedData] = useState<any>(null);
+    const [scannedData, setScannedData] = useState<Record<string, number> | null>(null);
 
     const handlePhotoUpload = (view: string, e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {

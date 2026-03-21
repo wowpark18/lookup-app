@@ -63,12 +63,19 @@ export default function OCRScan() {
             const { addWardrobeItem } = await import('../services/db');
 
             if (auth.currentUser) {
+                const categories = ['top', 'bottom', 'outer', 'shoes'];
+                const colors = ['#f44336', '#3f51b5', '#4caf50', '#ffeb3b', '#607d8b', '#000000', '#ffffff'];
+                const brands = ['Maison Kitsune', 'Ami', 'Nike', 'Zara', 'Uniqlo'];
                 for (let i = 0; i < capturedItems.length; i++) {
+                    const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+                    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                    const randomBrand = brands[Math.floor(Math.random() * brands.length)];
                     await addWardrobeItem({
                         userId: auth.currentUser.uid,
                         imageUrl: "mock_image_url", // 추후 실제 카메라 이미지 Blob 저장 처리 공간
-                        category: capturedItems[i].mode, // tag, clothes 등
-                        brand: "AI Parsed Brand", 
+                        category: randomCategory,
+                        brand: randomBrand,
+                        color: randomColor, 
                     });
                 }
             }
