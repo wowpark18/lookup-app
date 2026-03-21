@@ -95,37 +95,41 @@ export default function Scan3D() {
     };
 
     const renderStep1 = () => (
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col pt-8 pb-8">
-            <h2 className="text-3xl font-extrabold text-white mb-3">기본 체형 데이터 <span className="text-primary">입력</span></h2>
-            <p className="text-gray-400 mb-10 text-sm leading-relaxed">AI가 정확한 3D 비례를 계산하기 위해<br/>꼭 필요한 기초 데이터입니다.</p>
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-col" style={{ flex: 1, padding: '32px 0' }}>
+            <h2 className="outfit" style={{ fontSize: '28px', fontWeight: 800, color: 'white', margin: '0 0 12px 0' }}>기본 체형 데이터 <span style={{ color: 'var(--primary)' }}>입력</span></h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.6, margin: '0 0 40px 0' }}>AI가 정확한 3D 비례를 계산하기 위해<br/>꼭 필요한 기초 데이터입니다.</p>
             
-            <div className="bg-white/5 border border-white/10 p-7 rounded-[32px] flex flex-col gap-6">
-                <div>
-                    <label className="block text-sm font-bold text-gray-400 mb-2">키 (Height)</label>
-                    <div className="relative flex items-center">
-                        <input type="number" placeholder="예: 175" value={bodyData.height} onChange={e => setBodyData({...bodyData, height: e.target.value})} className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-primary transition-colors pr-14" />
-                        <span className="absolute right-5 text-gray-500 font-medium">cm</span>
+            <div className="glass-panel flex-col gap-6" style={{ padding: '28px', background: 'rgba(255,255,255,0.03)', borderRadius: '32px' }}>
+                <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '8px' }}>키 (Height)</label>
+                    <div className="relative flex-row items-center">
+                        <input type="number" placeholder="예: 175" value={bodyData.height} onChange={e => setBodyData({...bodyData, height: e.target.value})} 
+                            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '16px 48px 16px 20px', color: 'white', fontSize: '18px', outline: 'none', minWidth: 0, boxSizing: 'border-box', width: '100%' }} />
+                        <span className="absolute" style={{ right: '20px', color: '#666', fontWeight: 500 }}>cm</span>
                     </div>
                 </div>
-                <div>
-                    <label className="block text-sm font-bold text-gray-400 mb-2">몸무게 (Weight)</label>
-                    <div className="relative flex items-center">
-                        <input type="number" placeholder="예: 70" value={bodyData.weight} onChange={e => setBodyData({...bodyData, weight: e.target.value})} className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-primary transition-colors pr-14" />
-                        <span className="absolute right-5 text-gray-500 font-medium">kg</span>
+                <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '8px' }}>몸무게 (Weight)</label>
+                    <div className="relative flex-row items-center">
+                        <input type="number" placeholder="예: 70" value={bodyData.weight} onChange={e => setBodyData({...bodyData, weight: e.target.value})} 
+                            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '16px 48px 16px 20px', color: 'white', fontSize: '18px', outline: 'none', minWidth: 0, boxSizing: 'border-box', width: '100%' }} />
+                        <span className="absolute" style={{ right: '20px', color: '#666', fontWeight: 500 }}>kg</span>
                     </div>
                 </div>
-                <div className="flex gap-4">
-                    <div className="flex-1">
-                        <label className="block text-sm font-bold text-gray-400 mb-2">성별</label>
-                        <select value={bodyData.gender} onChange={e => setBodyData({...bodyData, gender: e.target.value})} className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-primary appearance-none">
+                <div className="flex-row gap-4" style={{ display: 'flex' }}>
+                    <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '8px' }}>성별</label>
+                        <select value={bodyData.gender} onChange={e => setBodyData({...bodyData, gender: e.target.value})} 
+                            style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.6)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '16px 20px', color: 'white', fontSize: '16px', outline: 'none', WebkitAppearance: 'none' }}>
                             <option value="">성별 선택</option>
                             <option value="male">남성 (Male)</option>
                             <option value="female">여성 (Female)</option>
                         </select>
                     </div>
-                    <div className="flex-1">
-                        <label className="block text-sm font-bold text-gray-400 mb-2">나이</label>
-                        <input type="number" placeholder="예: 28" value={bodyData.age} onChange={e => setBodyData({...bodyData, age: e.target.value})} className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-primary" />
+                    <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '8px' }}>나이</label>
+                        <input type="number" placeholder="예: 28" value={bodyData.age} onChange={e => setBodyData({...bodyData, age: e.target.value})} 
+                            style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.6)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '16px 20px', color: 'white', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} />
                     </div>
                 </div>
             </div>
@@ -133,7 +137,8 @@ export default function Scan3D() {
             <button 
                 onClick={() => setStep(2)}
                 disabled={!bodyData.height || !bodyData.weight || !bodyData.gender}
-                className="mt-8 w-full py-5 rounded-2xl font-bold bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-xl shadow-primary/20"
+                className="primary-button"
+                style={{ marginTop: '32px', width: '100%', padding: '20px 0', fontSize: '18px', opacity: (!bodyData.height || !bodyData.weight || !bodyData.gender) ? 0.5 : 1 }}
             >
                 다음: 사진 업로드
             </button>
@@ -141,56 +146,60 @@ export default function Scan3D() {
     );
 
     const renderStep2 = () => (
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col pt-8 pb-8">
-            <h2 className="text-3xl font-extrabold text-white mb-3">전신 사진 <span className="text-primary">업로드</span></h2>
-            <p className="text-gray-400 mb-8 text-sm break-keep leading-relaxed">타이트한 옷을 입고 촬영해주시면<br/>AI가 훨씬 더 정교하게 아바타를 생성합니다.</p>
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-col" style={{ flex: 1, padding: '32px 0' }}>
+            <h2 className="outfit" style={{ fontSize: '28px', fontWeight: 800, color: 'white', margin: '0 0 12px 0' }}>전신 사진 <span style={{ color: 'var(--primary)' }}>업로드</span></h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.6, margin: '0 0 32px 0', wordBreak: 'keep-all' }}>타이트한 옷을 입고 촬영해주시면<br/>AI가 훨씬 더 정교하게 아바타를 생성합니다.</p>
             
-            <div className="grid grid-cols-2 gap-4 flex-1">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', flex: 1 }}>
                 {[
-                    { id: 'front', label: '정면 (Front)' },
-                    { id: 'back', label: '후면 (Back)' },
-                    { id: 'left', label: '좌측면 (Left)' },
-                    { id: 'right', label: '우측면 (Right)' }
+                    { id: 'front', label: '정면' },
+                    { id: 'back', label: '후면' },
+                    { id: 'left', label: '좌측면' },
+                    { id: 'right', label: '우측면' }
                 ].map(view => (
-                    <div key={view.id} className="relative aspect-[3/4] bg-white/5 rounded-3xl border flex flex-col items-center justify-center overflow-hidden border-dashed border-white/20 hover:border-primary/50 transition-colors">
+                    <div key={view.id} className="relative flex-col items-center justify-center glass-panel" style={{ height: '140px', borderRadius: '24px', overflow: 'hidden', border: '1px dashed rgba(255,255,255,0.2)' }}>
                         {photos[view.id] ? (
                             <>
-                                <img src={photos[view.id]!} alt={view.label} className="w-full h-full object-cover opacity-80" />
-                                <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                    <Camera size={24} className="mb-2 text-white" />
-                                    <span className="text-xs font-bold text-white">다시 촬영</span>
+                                <img src={photos[view.id]!} alt={view.label} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }} />
+                                <div className="absolute flex-col items-center justify-center w-full h-full" style={{ top: 0, left: 0, background: 'rgba(0,0,0,0.5)', opacity: 0, transition: 'opacity 0.2s', zIndex: 1 }}
+                                     onMouseEnter={(e) => e.currentTarget.style.opacity = '1'} onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}>
+                                    <Camera size={24} color="white" style={{ marginBottom: '8px' }} />
+                                    <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'white' }}>다시 촬영</span>
                                 </div>
                             </>
                         ) : (
-                            <div className="flex flex-col items-center justify-center p-4 h-full pointer-events-none text-center">
-                                <UserCircle2 size={36} className="text-white/20 mb-3" />
-                                <div className="text-sm font-bold text-white/80 whitespace-nowrap">{view.label}</div>
-                                <div className="text-[10px] text-white/40 mt-1 whitespace-nowrap">터치하여 업로드</div>
+                            <div className="flex-col items-center justify-center" style={{ padding: '16px', height: '100%', pointerEvents: 'none', textAlign: 'center' }}>
+                                <UserCircle2 size={32} color="rgba(255,255,255,0.2)" style={{ marginBottom: '12px' }} />
+                                <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'rgba(255,255,255,0.8)', whiteSpace: 'nowrap' }}>{view.label}</div>
+                                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '4px', whiteSpace: 'nowrap' }}>촬영/업로드</div>
                             </div>
                         )}
                         <input 
                             type="file" 
                             accept="image/*" 
                             capture="environment"
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            title="사진 업로드"
+                            className="absolute"
+                            style={{ inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 10 }}
+                            title={`${view.label} 업로드`}
                             onChange={(e) => handlePhotoUpload(view.id, e)}
                         />
                     </div>
                 ))}
             </div>
 
-            <div className="mt-8 flex gap-4">
+            <div className="flex-row gap-4" style={{ marginTop: '32px', display: 'flex' }}>
                 <button 
                     onClick={() => setStep(1)}
-                    className="flex-1 py-5 rounded-2xl font-bold bg-white/10 text-white text-lg hover:bg-white/20 transition-colors"
+                    className="glass-button"
+                    style={{ flex: 1, padding: '20px 0', fontSize: '16px', borderRadius: '16px', margin: 0 }}
                 >
-                    이전으로
+                    이전
                 </button>
                 <button 
                     onClick={startGeneration}
                     disabled={!photos.front}
-                    className="flex-1 py-5 rounded-2xl font-bold bg-primary text-white disabled:opacity-50 text-lg shadow-xl shadow-primary/20"
+                    className="primary-button"
+                    style={{ flex: 1.5, padding: '20px 0', fontSize: '16px', borderRadius: '16px', opacity: !photos.front ? 0.5 : 1, margin: 0 }}
                 >
                     AI 생성 시작
                 </button>
@@ -199,19 +208,19 @@ export default function Scan3D() {
     );
 
     const renderStep3 = () => (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex flex-col items-center justify-center bg-[radial-gradient(circle_at_50%_50%,#2a1040_0%,#0a0a0a_100%)]">
-            <div className="relative w-48 h-48 flex items-center justify-center mb-8">
-                <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }} className="absolute inset-0 rounded-full border-2 border-dashed border-primary/30" />
-                <motion.div animate={{ rotate: -360 }} transition={{ duration: 15, repeat: Infinity, ease: 'linear' }} className="absolute inset-4 rounded-full border-2 border-solid border-secondary/20" />
-                <Activity size={48} className="text-primary animate-pulse" />
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-col items-center justify-center" style={{ flex: 1, background: 'radial-gradient(circle at 50% 50%, #2a1040 0%, var(--bg-dark) 100%)' }}>
+            <div className="relative flex-row items-center justify-center" style={{ width: '192px', height: '192px', marginBottom: '32px' }}>
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }} className="absolute" style={{ inset: 0, borderRadius: '50%', border: '2px dashed rgba(157,78,221,0.3)' }} />
+                <motion.div animate={{ rotate: -360 }} transition={{ duration: 15, repeat: Infinity, ease: 'linear' }} className="absolute" style={{ inset: '16px', borderRadius: '50%', border: '2px solid rgba(255,0,110,0.2)' }} />
+                <Activity size={48} color="var(--primary)" className="animate-pulse" />
             </div>
             
-            <h2 className="text-xl font-bold text-white mb-2">AI 아바타 생성 중... {progress}%</h2>
-            <p className="text-sm text-gray-400 h-6">{statusText}</p>
+            <h2 className="outfit" style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>AI 아바타 생성 중... {progress}%</h2>
+            <p style={{ fontSize: '14px', color: 'var(--text-muted)', height: '24px' }}>{statusText}</p>
 
-            <div className="w-64 h-2 bg-white/5 rounded-full overflow-hidden mt-8">
+            <div style={{ width: '256px', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '999px', overflow: 'hidden', marginTop: '32px' }}>
                 <motion.div 
-                    className="h-full bg-gradient-to-r from-primary to-secondary"
+                    style={{ height: '100%', background: 'linear-gradient(to right, var(--primary), var(--secondary))' }}
                     animate={{ width: `${progress}%` }}
                     transition={{ ease: "easeOut" }}
                 />
@@ -220,30 +229,31 @@ export default function Scan3D() {
     );
 
     const renderStep4 = () => (
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col pt-12 pb-24 h-full relative z-10">
-            <div className="text-center mb-10">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 mb-4">
-                    <CheckCircle2 size={32} className="text-green-400" />
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex-col relative" style={{ flex: 1, paddingTop: '48px', paddingBottom: '96px', zIndex: 10 }}>
+            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                <div className="flex-row items-center justify-center" style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(34,197,94,0.2)', marginBottom: '16px', margin: '0 auto 16px' }}>
+                    <CheckCircle2 size={32} color="#4ade80" />
                 </div>
-                <h2 className="text-2xl font-extrabold text-white mb-2">3D 아바타 생성 완료!</h2>
-                <p className="text-primary text-sm font-bold">입력된 데이터로 생성된 신체 치수</p>
+                <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'white', margin: '0 0 8px 0' }}>3D 아바타 생성 완료!</h2>
+                <p style={{ color: 'var(--primary)', fontSize: '14px', fontWeight: 'bold', margin: 0 }}>입력된 데이터로 생성된 신체 치수</p>
             </div>
             
-            <div className="glass-panel p-5 rounded-3xl border border-primary/20 bg-black/40">
-                <div className="grid grid-cols-2 gap-3">
+            <div className="glass-panel" style={{ padding: '20px', borderRadius: '24px', border: '1px solid rgba(157,78,221,0.2)', background: 'rgba(0,0,0,0.4)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                     {scannedData && Object.entries(scannedData).map(([k, v]) => (
-                        <div key={k} className="p-3 rounded-2xl bg-black/40 border border-white/5 flex flex-col items-center justify-center">
-                            <div className="text-[10px] text-white/50 uppercase font-bold mb-1 tracking-wider">{k}</div>
-                            <div className="text-xl font-extrabold text-white">{Math.round(v as number)}<span className="text-[10px] font-normal text-white/40 ml-1">cm</span></div>
+                        <div key={k} className="flex-col items-center justify-center glass-panel" style={{ padding: '12px', borderRadius: '16px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px', letterSpacing: '0.05em' }}>{k}</div>
+                            <div style={{ fontSize: '20px', fontWeight: 800, color: 'white' }}>{Math.round(v as number)}<span style={{ fontSize: '10px', fontWeight: 'normal', color: 'rgba(255,255,255,0.4)', marginLeft: '4px' }}>cm</span></div>
                         </div>
                     ))}
                 </div>
             </div>
 
-            <div className="mt-auto pt-8">
+            <div className="flex-col" style={{ marginTop: 'auto', paddingTop: '32px' }}>
                 <button 
                     onClick={() => navigate('/dashboard')}
-                    className="primary-button w-full py-4 rounded-xl font-bold text-lg bg-primary text-white shadow-[0_0_30px_rgba(157,78,221,0.3)]"
+                    className="primary-button outfit"
+                    style={{ width: '100%', padding: '16px 0', borderRadius: '16px', fontSize: '18px' }}
                 >
                     내 아바타 확인하러 가기
                 </button>
@@ -252,27 +262,28 @@ export default function Scan3D() {
     );
 
     return (
-        <div className="min-h-[100dvh] bg-[#0a0a0a] flex flex-col relative overflow-x-hidden">
+        <div style={{ minHeight: '100dvh', background: 'var(--bg-dark)', display: 'flex', flexDirection: 'column', position: 'relative', overflowX: 'hidden' }}>
             {/* Header / Top Navigation */}
-            <div className="absolute top-0 left-0 right-0 p-6 z-20 flex justify-between items-center bg-gradient-to-b from-[#0a0a0a] to-transparent">
+            <div className="absolute flex-row justify-between items-center" style={{ top: 0, left: 0, right: 0, padding: '24px', zIndex: 20, background: 'linear-gradient(to bottom, var(--bg-dark), transparent)' }}>
                 <button 
                     onClick={() => step > 1 && step < 3 ? setStep(step - 1) : navigate(-1)} 
-                    className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center cursor-pointer hover:bg-white/20 transition-colors border border-white/5"
+                    className="flex-row items-center justify-center glass-panel"
+                    style={{ width: '48px', height: '48px', borderRadius: '50%', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.05)' }}
                 >
                     <ChevronLeft size={24} color="white" />
                 </button>
-                <div className="px-5 py-2.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-full">
-                    <span className="text-primary font-bold text-xs tracking-wider">AI Avatar Engine</span>
+                <div className="glass-panel" style={{ padding: '10px 20px', borderRadius: '999px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <span className="outfit" style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '12px', letterSpacing: '0.05em' }}>AI Avatar Engine</span>
                 </div>
             </div>
 
             {/* Scrollable Content Wrapper */}
-            <div className="flex-1 w-full max-w-md mx-auto px-6 overflow-y-auto pb-10 pt-24 custom-scrollbar">
+            <div className="flex-col" style={{ flex: 1, width: '100%', maxWidth: '480px', margin: '0 auto', padding: '96px 24px 40px', overflowY: 'auto' }}>
                 <AnimatePresence mode="wait">
-                    {step === 1 && <motion.div key="step1" className="min-h-full flex flex-col">{renderStep1()}</motion.div>}
-                    {step === 2 && <motion.div key="step2" className="min-h-full flex flex-col">{renderStep2()}</motion.div>}
-                    {step === 3 && <motion.div key="step3" className="min-h-full flex flex-col">{renderStep3()}</motion.div>}
-                    {step === 4 && <motion.div key="step4" className="min-h-full flex flex-col">{renderStep4()}</motion.div>}
+                    {step === 1 && <motion.div key="step1" className="flex-col" style={{ minHeight: '100%', display: 'flex' }}>{renderStep1()}</motion.div>}
+                    {step === 2 && <motion.div key="step2" className="flex-col" style={{ minHeight: '100%', display: 'flex' }}>{renderStep2()}</motion.div>}
+                    {step === 3 && <motion.div key="step3" className="flex-col" style={{ minHeight: '100%', display: 'flex' }}>{renderStep3()}</motion.div>}
+                    {step === 4 && <motion.div key="step4" className="flex-col" style={{ minHeight: '100%', display: 'flex' }}>{renderStep4()}</motion.div>}
                 </AnimatePresence>
             </div>
         </div>
