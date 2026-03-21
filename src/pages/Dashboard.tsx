@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Sparkles, User, Settings, Info, CloudRain, ChevronRight, ChevronDown, UserPlus, X, Upload, Bell, Moon, HelpCircle, LogOut, Sun, Cloud, CloudSnow, CloudLightning, CloudFog, Mic, Wand2, Send, Bot, Shirt } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, useGLTF, Environment } from '@react-three/drei';
+import { OrbitControls, useGLTF, Environment, ContactShadows } from '@react-three/drei';
 import { Suspense, Component, useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import type { ReactNode, WheelEvent, TouchEvent } from 'react';
 import * as THREE from 'three';
@@ -24,8 +24,13 @@ class ModelErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 }
 
 function AvatarModel({ panY, zoom, profileId, styleColor }: { panY: number; zoom: number; profileId: string; styleColor: string }) {
-    // Using a local cached Xbot glTF as a placeholder to ensure it loads without network/CORS issues
-    const { scene } = useGLTF('/assets/Xbot.glb');
+    // 임시 성인용(여성) Ready Player Me 퍼블릭 아바타 URL
+    // TODO: 유저 로그인 후 본인 계정의 RPM URL로 동적 변경 예정 ('https://models.readyplayer.me/유저아이디.glb')
+    const avatarUrl = profileId === 'child'
+        ? '/assets/Xbot.glb' // 자녀는 기존 Xbot 유지 또는 다른 아동용 모델 사용 가능
+        : 'https://models.readyplayer.me/64673fb39fd9ad64b97f0ba8.glb';
+
+    const { scene } = useGLTF(avatarUrl);
 
     // 스캔(Scan3D) 페이지에서 측정한 결과를 가져옵니다. 없을 경우 기본 비율(1.0)을 유지합니다.
     const measurements = useMemo(() => {
@@ -62,30 +67,33 @@ function AvatarModel({ panY, zoom, profileId, styleColor }: { panY: number; zoom
         scene.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
                 const mesh = child as THREE.Mesh;
-                if (mesh.name === 'Alpha_Surface' && mesh.material) {
-                    const mat = mesh.material as THREE.MeshStandardMaterial;
+                // RPM의 상의 메쉬 이름은 주로 'Wolf3D_Outfit_Top' 또는 'Alpha_Surface'(기존 Xbot) 입니다.
+                if ((mesh.name === 'Wolf3D_Outfit_Top' || mesh.name === 'Alpha_Surface') && mesh.material) {
+                    // 원본 material 오염 방지를 위해 clone
+                    const mat = (mesh.material as THREE.MeshStandardMaterial).clone();
                     if (mat.color) {
                         mat.color.set(styleColor);
-                        mat.needsUpdate = true;
+                        mesh.material = mat;
                     }
                 }
             }
         });
 
-        const leftArm = scene.getObjectByName('mixamorigLeftArm');
-        const rightArm = scene.getObjectByName('mixamorigRightArm');
-        const leftForeArm = scene.getObjectByName('mixamorigLeftForeArm');
-        const rightForeArm = scene.getObjectByName('mixamorigRightForeArm');
+        // RPM 아바타는 mixamorig 접두사가 없을 수 있으므로 범용적으로 찾습니다.
+        const leftArm = scene.getObjectByName('LeftArm') || scene.getObjectByName('mixamorigLeftArm');
+        const rightArm = scene.getObjectByName('RightArm') || scene.getObjectByName('mixamorigRightArm');
+        const leftForeArm = scene.getObjectByName('LeftForeArm') || scene.getObjectByName('mixamorigLeftForeArm');
+        const rightForeArm = scene.getObjectByName('RightForeArm') || scene.getObjectByName('mixamorigRightForeArm');
 
-        const head = scene.getObjectByName('mixamorigHead');
-        const spine1 = scene.getObjectByName('mixamorigSpine1');
-        const spine2 = scene.getObjectByName('mixamorigSpine2');
-        const hips = scene.getObjectByName('mixamorigHips');
+        const head = scene.getObjectByName('Head') || scene.getObjectByName('mixamorigHead');
+        const spine1 = scene.getObjectByName('Spine1') || scene.getObjectByName('mixamorigSpine1');
+        const spine2 = scene.getObjectByName('Spine2') || scene.getObjectByName('mixamorigSpine2');
+        const hips = scene.getObjectByName('Hips') || scene.getObjectByName('mixamorigHips');
 
-        const leftUpLeg = scene.getObjectByName('mixamorigLeftUpLeg');
-        const rightUpLeg = scene.getObjectByName('mixamorigRightUpLeg');
-        const leftLeg = scene.getObjectByName('mixamorigLeftLeg');
-        const rightLeg = scene.getObjectByName('mixamorigRightLeg');
+        const leftUpLeg = scene.getObjectByName('LeftUpLeg') || scene.getObjectByName('mixamorigLeftUpLeg');
+        const rightUpLeg = scene.getObjectByName('RightUpLeg') || scene.getObjectByName('mixamorigRightUpLeg');
+        const leftLeg = scene.getObjectByName('LeftLeg') || scene.getObjectByName('mixamorigLeftLeg');
+        const rightLeg = scene.getObjectByName('RightLeg') || scene.getObjectByName('mixamorigRightLeg');
 
         // 1. 팔(Arm)을 Z축 기준으로 내려 차렷 자세 모방
         if (leftArm) leftArm.rotation.z = -1.2;
@@ -640,6 +648,13 @@ export default function Dashboard() {
                                     <span style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>날씨 정보 탐색 중...</span>
                                 </div>
                             )}
+
+                            {/* Ready Player Me 품질 배지 */}
+                            <div className="glass-panel" style={{ padding: '6px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(157, 78, 221, 0.2)', border: '1px solid rgba(157, 78, 221, 0.4)' }}>
+                                <User size={12} color="var(--primary)" />
+                                <span style={{ fontSize: '10px', fontWeight: 800, color: 'white', letterSpacing: '0.5px' }}>RPM AVATAR</span>
+                            </div>
+
                             <div
                                 style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,0,110,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--secondary)', cursor: 'pointer', pointerEvents: 'auto' }}
                                 onClick={() => setShowAIChat(true)}
@@ -658,12 +673,16 @@ export default function Dashboard() {
                         >
                             <ModelErrorBoundary>
                                 <Canvas camera={{ position: [0, 0, 4.5], fov: 45 }}>
-                                    <ambientLight intensity={0.8} />
+                                    <ambientLight intensity={1.2} />
                                     <directionalLight position={[5, 10, 5]} intensity={1.5} color="#fff" />
                                     <directionalLight position={[-5, 5, -5]} intensity={0.5} color="#9d4edd" />
+                                    <spotLight position={[0, 5, 5]} angle={0.4} penumbra={1} intensity={1} castShadow />
+                                    {/* 추가 환경광 적용 */}
                                     <Environment preset="city" />
                                     <Suspense fallback={null}>
                                         <AvatarModel panY={panY} zoom={zoom} profileId={selectedProfile.id} styleColor={dynamicOOTDOptions[selectedOOTD].avatarColor} />
+                                        {/* 아바타 발 밑 그림자 효과 추가 (Premium Look) */}
+                                        <ContactShadows resolution={512} scale={10} blur={2} opacity={0.5} far={10} position={[0, -1.4 + panY, 0]} color="#000000" />
                                     </Suspense>
                                     <OrbitControls
                                         enableZoom={false}
