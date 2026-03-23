@@ -24,11 +24,11 @@ class ModelErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 }
 
 function AvatarModel({ panY, zoom, profileId, styleColor }: { panY: number; zoom: number; profileId: string; styleColor: string }) {
-    // 임시 성인용(여성) Ready Player Me 퍼블릭 아바타 URL
+    // 임시 성인용(여성) Ready Player Me 퍼블릭 아바타 URL (현재 연결 오류로 로컬 모델 대체)
     // TODO: 유저 로그인 후 본인 계정의 RPM URL로 동적 변경 예정 ('https://models.readyplayer.me/유저아이디.glb')
     const avatarUrl = profileId === 'child'
         ? '/assets/Xbot.glb' // 자녀는 기존 Xbot 유지 또는 다른 아동용 모델 사용 가능
-        : 'https://models.readyplayer.me/64673fb39fd9ad64b97f0ba8.glb';
+        : '/assets/Xbot.glb'; // 'https://models.readyplayer.me/64673fb39fd9ad64b97f0ba8.glb';
 
     const { scene } = useGLTF(avatarUrl);
 
