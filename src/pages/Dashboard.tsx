@@ -23,12 +23,12 @@ class ModelErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
     }
 }
 
-function AvatarModel({ panY, zoom, profileId, styleColor }: { panY: number; zoom: number; profileId: string; styleColor: string }) {
-    // 임시 성인용(여성) Ready Player Me 퍼블릭 아바타 URL (현재 연결 오류로 로컬 모델 대체)
-    // TODO: 유저 로그인 후 본인 계정의 RPM URL로 동적 변경 예정 ('https://models.readyplayer.me/유저아이디.glb')
+function AvatarModel({ panY, zoom, profileId, styleColor, customAvatarUrl }: { panY: number; zoom: number; profileId: string; styleColor: string; customAvatarUrl?: string | null }) {
+    // 성인용(여성) 기본 룩업 아바타 대신, 커스텀 RPM 생성 모델 반영
+    const fallbackUrl = '/assets/Xbot.glb';
     const avatarUrl = profileId === 'child'
-        ? '/assets/Xbot.glb' // 자녀는 기존 Xbot 유지 또는 다른 아동용 모델 사용 가능
-        : '/assets/Xbot.glb'; // 'https://models.readyplayer.me/64673fb39fd9ad64b97f0ba8.glb';
+        ? fallbackUrl // 자녀는 기존 Xbot (또는 아동 전용 모델) 그대로 활용
+        : (customAvatarUrl || fallbackUrl);
 
     const { scene } = useGLTF(avatarUrl);
 
@@ -170,6 +170,27 @@ export default function Dashboard() {
     const [isDarkMode, setIsDarkMode] = useState(true);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
+    const [showRPMCreator, setShowRPMCreator] = useState(false);
+    const [rpmAvatarUrl, setRpmAvatarUrl] = useState<string | null>(() => localStorage.getItem('lookUpRpmAvatarUrl'));
+
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            try {
+                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                if (data?.source !== 'readyplayerme') return;
+                if (data.eventName === 'v1.avatar.exported') {
+                    const url = data.data.url;
+                    setRpmAvatarUrl(url);
+                    localStorage.setItem('lookUpRpmAvatarUrl', url);
+                    setTimeout(() => setShowRPMCreator(false), 800);
+                }
+            } catch (e) {
+                // ignore gracefully
+            }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
 
     const [measurements, setMeasurements] = useState(() => {
         const saved = localStorage.getItem('lookUpMeasurements');
@@ -477,6 +498,34 @@ export default function Dashboard() {
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             style={{ padding: '0px', display: 'flex', flexDirection: 'column', height: '100%' }}
         >
+            <AnimatePresence>
+                {showRPMCreator && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 50 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 50 }}
+                        style={{
+                            position: 'fixed', inset: 0, zIndex: 99999, background: 'var(--bg-dark)',
+                            display: 'flex', flexDirection: 'column'
+                        }}
+                    >
+                        <div style={{ padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.5)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                            <h2 style={{ fontSize: '16px', fontWeight: 700 }}>나만의 아바타 만들기</h2>
+                            <div className="glass-panel" style={{ padding: '8px', borderRadius: '50%', cursor: 'pointer' }} onClick={() => setShowRPMCreator(false)}>
+                                <X size={20} />
+                            </div>
+                        </div>
+                        <iframe
+                            id="frame"
+                            className="frame"
+                            allow="camera *; microphone *; clipboard-write"
+                            src="https://demo.readyplayer.me/avatar?frameApi"
+                            style={{ width: '100%', flex: 1, border: 'none', background: 'white' }}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* 1st Viewport : Info & 3D Avatar */}
             <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', paddingBottom: '12px' }}>
                 {/* Header Profile Area */}
@@ -649,10 +698,16 @@ export default function Dashboard() {
                                 </div>
                             )}
 
-                            {/* Ready Player Me 품질 배지 */}
-                            <div className="glass-panel" style={{ padding: '6px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(157, 78, 221, 0.2)', border: '1px solid rgba(157, 78, 221, 0.4)' }}>
+                            {/* Ready Player Me 생성기 런처 */}
+                            <div 
+                                className="glass-panel" 
+                                style={{ padding: '6px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(157, 78, 221, 0.3)', border: '1px solid rgba(157, 78, 221, 0.5)', cursor: 'pointer', pointerEvents: 'auto', boxShadow: '0 0 10px rgba(157, 78, 221, 0.2)' }}
+                                onClick={() => setShowRPMCreator(true)}
+                            >
                                 <User size={12} color="var(--primary)" />
-                                <span style={{ fontSize: '10px', fontWeight: 800, color: 'white', letterSpacing: '0.5px' }}>RPM AVATAR</span>
+                                <span style={{ fontSize: '10px', fontWeight: 800, color: 'white', letterSpacing: '0.5px' }}>
+                                    {rpmAvatarUrl ? '아바타 변경 (RPM)' : '아바타 생성하기'}
+                                </span>
                             </div>
 
                             <div
@@ -680,7 +735,7 @@ export default function Dashboard() {
                                     {/* 추가 환경광 적용 */}
                                     <Environment preset="city" />
                                     <Suspense fallback={null}>
-                                        <AvatarModel panY={panY} zoom={zoom} profileId={selectedProfile.id} styleColor={dynamicOOTDOptions[selectedOOTD].avatarColor} />
+                                        <AvatarModel panY={panY} zoom={zoom} profileId={selectedProfile.id} styleColor={dynamicOOTDOptions[selectedOOTD].avatarColor} customAvatarUrl={rpmAvatarUrl} />
                                         {/* 아바타 발 밑 그림자 효과 추가 (Premium Look) */}
                                         <ContactShadows resolution={512} scale={10} blur={2} opacity={0.5} far={10} position={[0, -1.4 + panY, 0]} color="#000000" />
                                     </Suspense>
