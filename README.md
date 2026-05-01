@@ -7,8 +7,10 @@ Look-UP은 AI 기반의 프리미엄 스마트 옷장 및 스타일 추천 애�
 
 - **AI 피팅룸 (Fitting Room)**: 가상 피팅 및 스마트 거울 기능을 제공하는 핵심 공간. 글래스모피즘(Glassmorphism)과 생체 인식 패널, HUD 오버레이 등 프리미엄 사이버펑크 감성의 UI 적용.
 - **스마트 옷장 (Wardrobe)**: 등록된 의류 아이템들을 카테고리별로 관리하고 확인할 수 있는 공간.
+- **OOTD 기록 및 달력 (OOTD Calendar)**: 데일리 룩을 기록하고 월간 달력(Calendar View)을 통해 과거 착장 히스토리를 직관적으로 확인.
 - **OCR 스캔 (OCR Scan)**: 의류의 케어 라벨을 스캔하여 세탁 방법 및 재질 정보를 자동으로 추출하는 기능.
 - **AI 스타일 추천 (AI Recommendation)**: 날씨 정보와 사용자의 옷장 데이터를 분석하여 최적의 코디를 제안하는 인공지능 어시스턴트.
+- **개인화 프로필 (User Profile)**: 사용자의 체형(Body Shape)과 선호 스타일(Preferred Styles)을 설정하여 더욱 정교한 AI 맞춤 추천 제공.
 - **소셜 로그인 (Social Auth)**: Google 및 Apple 계정을 활용한 안전하고 빠른 간편 로그인 지원 (Firebase Auth 연동).
 
 ## 🛠 기술 스택 (Tech Stack)
@@ -80,3 +82,5 @@ npx cap open ios
 - **2026.04**: Fitting Room 및 OCR Scan 화면 프리미엄 UI(AI Vision Studio 컨셉) 리디자인 적용
 - **2026.04**: iOS 환경 카메라 접근 권한 및 HTTPS 로컬 호스팅 이슈 해결
 - **2026.04**: Firebase 연동 및 멀티 플랫폼 소셜 로그인(Google, Apple) 구현
+- **2026.05**: OOTD 페이지의 월별 달력(Calendar) 뷰 도입 및 과거 착장 기록 조회/수정 기능 고도화
+- **2026.05**: 사용자 프로필 데이터(체형, 선호 스타일 다중 선택) 확장을 통한 맞춤형 추천 기반 마련
