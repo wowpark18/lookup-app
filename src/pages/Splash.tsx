@@ -1,148 +1,166 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Sparkles, Wand2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { auth } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
 export default function Splash() {
     const navigate = useNavigate();
+    const [showFallback, setShowFallback] = useState(false);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            const unsubscribe = onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    navigate('/dashboard');
-                } else {
-                    navigate('/login');
-                }
-            });
-            return () => unsubscribe();
-        }, 2000); // 2초 후 인증 상태 확인
+        let navigated = false;
+        let navTimer: any = null;
 
-        return () => clearTimeout(timer);
+        const handleNavigation = (user: any) => {
+            if (navigated) return;
+            navigated = true;
+            if (user) {
+                console.log('[Splash] 이미 로그인된 사용자입니다:', user.email);
+                navigate('/dashboard', { replace: true });
+            } else {
+                console.log('[Splash] 로그인이 필요한 사용자입니다.');
+                navigate('/login', { replace: true });
+            }
+        };
+
+        // 웅장한 브랜드 노출을 위해 최소 2초 대기 후 상태에 따라 이동
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            console.log('[Splash] Auth state changed:', user ? 'Logged In' : 'Logged Out');
+            if (navTimer) clearTimeout(navTimer);
+            
+            navTimer = setTimeout(() => {
+                handleNavigation(user);
+            }, 2000);
+        });
+
+        // [코다리 부장] 4초 후에도 반응 없으면 버튼이라도 띄워줌
+        const fallbackTimer = setTimeout(() => {
+            if (!navigated) setShowFallback(true);
+        }, 4000);
+
+        // [코다리 부장] 네트워크 문제 등으로 인증 체크가 무한 대기되는 현상 방지 (6초 후 강제 이동 시도 및 버튼 노출)
+        const safetyTimer = setTimeout(() => {
+            if (!navigated) {
+                console.warn('[Splash] 인증 확인 지연으로 인해 강제 이동을 시도합니다.');
+                handleNavigation(null);
+            }
+        }, 6000);
+
+        return () => {
+            unsubscribe();
+            if (navTimer) clearTimeout(navTimer);
+            clearTimeout(fallbackTimer);
+            clearTimeout(safetyTimer);
+        };
     }, [navigate]);
 
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, filter: 'blur(10px)' }}
-            transition={{ duration: 0.8 }}
-            style={{
-                width: '100%',
-                height: '100vh',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'var(--bg-dark)',
-                backgroundImage: 'linear-gradient(180deg, rgba(7,5,15,1) 0%, rgba(21,15,36,1) 100%)',
-                position: 'relative',
-                overflow: 'hidden'
-            }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1 }}
+            className="w-full h-screen relative overflow-hidden"
+            style={{ backgroundColor: 'var(--bg-app)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
         >
-            {/* Magic Background Glow */}
+            {/* Premium Mesh Gradient Background */}
             <motion.div
-                animate={{
+                animate={{ 
                     scale: [1, 1.2, 1],
-                    opacity: [0.3, 0.5, 0.3]
+                    opacity: [0.4, 0.6, 0.4],
+                    rotate: [0, 90, 0]
                 }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                style={{
-                    width: '300px',
-                    height: '300px',
-                    background: 'radial-gradient(circle, rgba(157, 78, 221, 0.4) 0%, rgba(255, 0, 110, 0.1) 40%, rgba(157, 78, 221, 0) 70%)',
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    borderRadius: '50%',
-                    zIndex: 1,
-                    filter: 'blur(20px)'
+                transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute rounded-full z-0 pointer-events-none"
+                style={{ 
+                    width: '70vw', 
+                    height: '70vw', 
+                    background: 'radial-gradient(circle, var(--primary-glow) 0%, transparent 70%)', 
+                    top: '5%', 
+                    left: '-15%',
+                    filter: 'blur(40px)'
+                }}
+            />
+            <motion.div
+                animate={{ 
+                    scale: [1, 1.5, 1],
+                    opacity: [0.3, 0.5, 0.3],
+                    rotate: [0, -90, 0]
+                }}
+                transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute rounded-full z-0 pointer-events-none"
+                style={{ 
+                    width: '90vw', 
+                    height: '90vw', 
+                    background: 'radial-gradient(circle, var(--secondary-glow) 0%, transparent 70%)', 
+                    bottom: '-15%', 
+                    right: '-15%',
+                    filter: 'blur(60px)'
                 }}
             />
 
-            {/* Animated Logo Container */}
+            {/* Central Animated Logo Container */}
             <motion.div
-                initial={{ y: 20, scale: 0.8 }}
-                animate={{ y: 0, scale: 1 }}
-                transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-                style={{
-                    position: 'relative',
-                    width: '120px',
-                    height: '120px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 5,
-                    marginBottom: '24px'
-                }}
+                initial={{ y: 30, opacity: 0, filter: 'blur(10px)' }}
+                animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
+                transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+                className="text-center z-10 flex flex-col items-center w-full px-6"
             >
-                {/* Spinning Outer Ring */}
-                <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                    style={{
-                        position: 'absolute',
-                        width: '100%',
-                        height: '100%',
-                        borderRadius: '50%',
-                        border: '2px dashed rgba(255, 255, 255, 0.2)',
-                        borderTopColor: 'var(--secondary)',
-                        borderBottomColor: 'var(--primary)'
+                {/* Glowing Glass Icon */}
+                <motion.div 
+                    className="flex items-center justify-center rounded-full relative mb-8 animate-float"
+                    style={{ 
+                        width: '100px', 
+                        height: '100px', 
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.4))',
+                        backdropFilter: 'blur(20px)',
+                        border: '1px solid rgba(255,255,255,0.8)',
+                        boxShadow: '0 20px 40px var(--primary-glow), inset 0 0 0 1px rgba(255,255,255,0.5)',
+                        zIndex: 2
                     }}
-                />
-
-                {/* Inner Glass Circle */}
-                <div style={{
-                    width: '80%',
-                    height: '80%',
-                    borderRadius: '50%',
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    backdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 0 30px rgba(157, 78, 221, 0.5)'
-                }}>
-                    <motion.div
-                        animate={{ y: [-2, 2, -2] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                    >
-                        <Wand2 size={40} color="white" />
-                    </motion.div>
-                </div>
-
-                {/* Floating Sparkles */}
-                <motion.div
-                    animate={{ opacity: [0, 1, 0], scale: [0.5, 1, 0.5], x: [0, 20, 0], y: [0, -20, 0] }}
-                    transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-                    style={{ position: 'absolute', top: '-10px', right: '-10px' }}
                 >
-                    <Sparkles size={24} color="var(--secondary)" />
+                    <div className="absolute inset-0 rounded-full animate-pulse" style={{ zIndex: -1 }}></div>
+                    <span 
+                        className="material-symbols-outlined text-gradient" 
+                        style={{ fontSize: '48px', fontVariationSettings: "'FILL' 1" }}
+                    >
+                        auto_fix_high
+                    </span>
                 </motion.div>
-            </motion.div>
-
-            <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                style={{
-                    textAlign: 'center',
-                    zIndex: 5
-                }}
-            >
-                <h1 className="outfit text-gradient" style={{ fontSize: '36px', fontWeight: 800, letterSpacing: '4px', marginBottom: '12px' }}>LOOK-UP</h1>
-                <p style={{ color: 'var(--text-main)', fontSize: '15px', fontWeight: 400, letterSpacing: '1px', marginBottom: '8px' }}>
-                    AI Fashion Director
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                    <div style={{ width: '30px', height: '1px', background: 'rgba(255,255,255,0.2)' }} />
-                    <p style={{ color: 'var(--primary)', fontSize: '12px', fontWeight: 600, letterSpacing: '2px' }}>AR MAGIC MIRROR</p>
-                    <div style={{ width: '30px', height: '1px', background: 'rgba(255,255,255,0.2)' }} />
+                
+                <h1 className="text-gradient" style={{ fontSize: '56px', fontWeight: '900', letterSpacing: '-2px', marginBottom: '16px', lineHeight: '1' }}>
+                    LOOK-UP
+                </h1>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '4px' }}>
+                    <div style={{ width: '40px', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(0,0,0,0.2))' }}></div>
+                    <p style={{ color: 'var(--text-main)', fontSize: '13px', fontWeight: '700', letterSpacing: '6px', textTransform: 'uppercase', opacity: 0.8 }}>
+                        AI Fashion Director
+                    </p>
+                    <div style={{ width: '40px', height: '1px', background: 'linear-gradient(270deg, transparent, rgba(0,0,0,0.2))' }}></div>
                 </div>
+
+                <AnimatePresence>
+                    {showFallback && (
+                        <motion.button
+                            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => navigate('/login')}
+                            className="glass-button"
+                            style={{
+                                marginTop: '48px',
+                                padding: '16px 32px',
+                                boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
+                            }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>login</span>
+                            직접 시작하기
+                        </motion.button>
+                    )}
+                </AnimatePresence>
             </motion.div>
         </motion.div>
     );

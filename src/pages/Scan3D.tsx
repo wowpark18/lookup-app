@@ -96,31 +96,31 @@ export default function Scan3D() {
 
     const renderStep1 = () => (
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-col" style={{ flex: 1, padding: '32px 0' }}>
-            <h2 className="outfit" style={{ fontSize: '28px', fontWeight: 800, color: 'white', margin: '0 0 12px 0' }}>기본 체형 데이터 <span style={{ color: 'var(--primary)' }}>입력</span></h2>
+            <h2 className="outfit" style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 12px 0' }}>기본 체형 데이터 <span style={{ color: 'var(--primary)' }}>입력</span></h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.6, margin: '0 0 40px 0' }}>AI가 정확한 3D 비례를 계산하기 위해<br/>꼭 필요한 기초 데이터입니다.</p>
             
-            <div className="glass-panel flex-col gap-6" style={{ padding: '28px', background: 'rgba(255,255,255,0.03)', borderRadius: '32px' }}>
+            <div className="glass-panel flex-col gap-6" style={{ padding: '28px', background: 'var(--bg-card)', borderRadius: '32px' }}>
                 <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '8px' }}>키 (Height)</label>
                     <div className="relative flex-row items-center">
                         <input type="number" placeholder="예: 175" value={bodyData.height} onChange={e => setBodyData({...bodyData, height: e.target.value})} 
-                            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '16px 48px 16px 20px', color: 'white', fontSize: '18px', outline: 'none', minWidth: 0, boxSizing: 'border-box', width: '100%' }} />
-                        <span className="absolute" style={{ right: '20px', color: '#666', fontWeight: 500 }}>cm</span>
+                            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.02)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '16px 48px 16px 20px', color: 'var(--text-main)', fontSize: '18px', outline: 'none', minWidth: 0, boxSizing: 'border-box', width: '100%' }} />
+                        <span className="absolute" style={{ right: '20px', color: 'var(--text-muted)', fontWeight: 500 }}>cm</span>
                     </div>
                 </div>
                 <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '8px' }}>몸무게 (Weight)</label>
                     <div className="relative flex-row items-center">
                         <input type="number" placeholder="예: 70" value={bodyData.weight} onChange={e => setBodyData({...bodyData, weight: e.target.value})} 
-                            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '16px 48px 16px 20px', color: 'white', fontSize: '18px', outline: 'none', minWidth: 0, boxSizing: 'border-box', width: '100%' }} />
-                        <span className="absolute" style={{ right: '20px', color: '#666', fontWeight: 500 }}>kg</span>
+                            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.02)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '16px 48px 16px 20px', color: 'var(--text-main)', fontSize: '18px', outline: 'none', minWidth: 0, boxSizing: 'border-box', width: '100%' }} />
+                        <span className="absolute" style={{ right: '20px', color: 'var(--text-muted)', fontWeight: 500 }}>kg</span>
                     </div>
                 </div>
                 <div className="flex-row gap-4" style={{ display: 'flex' }}>
                     <div style={{ flex: 1 }}>
                         <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '8px' }}>성별</label>
                         <select value={bodyData.gender} onChange={e => setBodyData({...bodyData, gender: e.target.value})} 
-                            style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.6)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '16px 20px', color: 'white', fontSize: '16px', outline: 'none', WebkitAppearance: 'none' }}>
+                            style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.02)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '16px 20px', color: 'var(--text-main)', fontSize: '16px', outline: 'none', WebkitAppearance: 'none' }}>
                             <option value="">성별 선택</option>
                             <option value="male">남성 (Male)</option>
                             <option value="female">여성 (Female)</option>
@@ -129,7 +129,7 @@ export default function Scan3D() {
                     <div style={{ flex: 1 }}>
                         <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '8px' }}>나이</label>
                         <input type="number" placeholder="예: 28" value={bodyData.age} onChange={e => setBodyData({...bodyData, age: e.target.value})} 
-                            style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.6)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '16px 20px', color: 'white', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} />
+                            style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.02)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '16px 20px', color: 'var(--text-main)', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} />
                     </div>
                 </div>
             </div>
@@ -147,7 +147,7 @@ export default function Scan3D() {
 
     const renderStep2 = () => (
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-col" style={{ flex: 1, padding: '32px 0' }}>
-            <h2 className="outfit" style={{ fontSize: '28px', fontWeight: 800, color: 'white', margin: '0 0 12px 0' }}>전신 사진 <span style={{ color: 'var(--primary)' }}>업로드</span></h2>
+            <h2 className="outfit" style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 12px 0' }}>전신 사진 <span style={{ color: 'var(--primary)' }}>업로드</span></h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.6, margin: '0 0 32px 0', wordBreak: 'keep-all' }}>타이트한 옷을 입고 촬영해주시면<br/>AI가 훨씬 더 정교하게 아바타를 생성합니다.</p>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', flex: 1 }}>
@@ -157,7 +157,7 @@ export default function Scan3D() {
                     { id: 'left', label: '좌측면' },
                     { id: 'right', label: '우측면' }
                 ].map(view => (
-                    <div key={view.id} className="relative flex-col items-center justify-center glass-panel" style={{ height: '140px', borderRadius: '24px', overflow: 'hidden', border: '1px dashed rgba(255,255,255,0.2)' }}>
+                    <div key={view.id} className="relative flex-col items-center justify-center glass-panel" style={{ height: '140px', borderRadius: '24px', overflow: 'hidden', border: '1px dashed var(--border-glass)' }}>
                         {photos[view.id] ? (
                             <>
                                 <img src={photos[view.id]!} alt={view.label} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }} />
@@ -169,9 +169,9 @@ export default function Scan3D() {
                             </>
                         ) : (
                             <div className="flex-col items-center justify-center" style={{ padding: '16px', height: '100%', pointerEvents: 'none', textAlign: 'center' }}>
-                                <UserCircle2 size={32} color="rgba(255,255,255,0.2)" style={{ marginBottom: '12px' }} />
-                                <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'rgba(255,255,255,0.8)', whiteSpace: 'nowrap' }}>{view.label}</div>
-                                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '4px', whiteSpace: 'nowrap' }}>촬영/업로드</div>
+                                <UserCircle2 size={32} color="var(--border-glass)" style={{ marginBottom: '12px' }} />
+                                <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap' }}>{view.label}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', whiteSpace: 'nowrap' }}>촬영/업로드</div>
                             </div>
                         )}
                         <input 
@@ -208,17 +208,17 @@ export default function Scan3D() {
     );
 
     const renderStep3 = () => (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-col items-center justify-center" style={{ flex: 1, background: 'radial-gradient(circle at 50% 50%, #2a1040 0%, var(--bg-dark) 100%)' }}>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-col items-center justify-center" style={{ flex: 1, background: 'var(--bg-gradient)' }}>
             <div className="relative flex-row items-center justify-center" style={{ width: '192px', height: '192px', marginBottom: '32px' }}>
                 <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }} className="absolute" style={{ inset: 0, borderRadius: '50%', border: '2px dashed rgba(157,78,221,0.3)' }} />
                 <motion.div animate={{ rotate: -360 }} transition={{ duration: 15, repeat: Infinity, ease: 'linear' }} className="absolute" style={{ inset: '16px', borderRadius: '50%', border: '2px solid rgba(255,0,110,0.2)' }} />
                 <Activity size={48} color="var(--primary)" className="animate-pulse" />
             </div>
             
-            <h2 className="outfit" style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>AI 아바타 생성 중... {progress}%</h2>
+            <h2 className="outfit" style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '8px' }}>AI 아바타 생성 중... {progress}%</h2>
             <p style={{ fontSize: '14px', color: 'var(--text-muted)', height: '24px' }}>{statusText}</p>
 
-            <div style={{ width: '256px', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '999px', overflow: 'hidden', marginTop: '32px' }}>
+            <div style={{ width: '256px', height: '8px', background: 'rgba(0,0,0,0.05)', borderRadius: '999px', overflow: 'hidden', marginTop: '32px' }}>
                 <motion.div 
                     style={{ height: '100%', background: 'linear-gradient(to right, var(--primary), var(--secondary))' }}
                     animate={{ width: `${progress}%` }}
@@ -231,19 +231,19 @@ export default function Scan3D() {
     const renderStep4 = () => (
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex-col relative" style={{ flex: 1, paddingTop: '48px', paddingBottom: '96px', zIndex: 10 }}>
             <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                <div className="flex-row items-center justify-center" style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(34,197,94,0.2)', marginBottom: '16px', margin: '0 auto 16px' }}>
-                    <CheckCircle2 size={32} color="#4ade80" />
+                <div className="flex-row items-center justify-center" style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(34,197,94,0.1)', marginBottom: '16px', margin: '0 auto 16px' }}>
+                    <CheckCircle2 size={32} color="#22c55e" />
                 </div>
-                <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'white', margin: '0 0 8px 0' }}>3D 아바타 생성 완료!</h2>
+                <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 8px 0' }}>3D 아바타 생성 완료!</h2>
                 <p style={{ color: 'var(--primary)', fontSize: '14px', fontWeight: 'bold', margin: 0 }}>입력된 데이터로 생성된 신체 치수</p>
             </div>
             
-            <div className="glass-panel" style={{ padding: '20px', borderRadius: '24px', border: '1px solid rgba(157,78,221,0.2)', background: 'rgba(0,0,0,0.4)' }}>
+            <div className="glass-panel" style={{ padding: '20px', borderRadius: '24px', border: '1px solid var(--border-glass)', background: 'var(--bg-card)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                     {scannedData && Object.entries(scannedData).map(([k, v]) => (
-                        <div key={k} className="flex-col items-center justify-center glass-panel" style={{ padding: '12px', borderRadius: '16px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px', letterSpacing: '0.05em' }}>{k}</div>
-                            <div style={{ fontSize: '20px', fontWeight: 800, color: 'white' }}>{Math.round(v as number)}<span style={{ fontSize: '10px', fontWeight: 'normal', color: 'rgba(255,255,255,0.4)', marginLeft: '4px' }}>cm</span></div>
+                        <div key={k} className="flex-col items-center justify-center glass-panel" style={{ padding: '12px', borderRadius: '16px', background: 'rgba(0,0,0,0.02)', border: '1px solid var(--border-glass)' }}>
+                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px', letterSpacing: '0.05em' }}>{k}</div>
+                            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-main)' }}>{Math.round(v as number)}<span style={{ fontSize: '10px', fontWeight: 'normal', color: 'var(--text-dim)', marginLeft: '4px' }}>cm</span></div>
                         </div>
                     ))}
                 </div>
@@ -262,17 +262,17 @@ export default function Scan3D() {
     );
 
     return (
-        <div style={{ minHeight: '100dvh', background: 'var(--bg-dark)', display: 'flex', flexDirection: 'column', position: 'relative', overflowX: 'hidden' }}>
+        <div style={{ minHeight: '100dvh', background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', position: 'relative', overflowX: 'hidden' }}>
             {/* Header / Top Navigation */}
-            <div className="absolute flex-row justify-between items-center" style={{ top: 0, left: 0, right: 0, padding: '24px', zIndex: 20, background: 'linear-gradient(to bottom, var(--bg-dark), transparent)' }}>
+            <div className="absolute flex-row justify-between items-center" style={{ top: 0, left: 0, right: 0, padding: '24px', zIndex: 20, background: 'linear-gradient(to bottom, var(--bg-app), transparent)' }}>
                 <button 
                     onClick={() => step > 1 && step < 3 ? setStep(step - 1) : navigate(-1)} 
                     className="flex-row items-center justify-center glass-panel"
-                    style={{ width: '48px', height: '48px', borderRadius: '50%', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.05)' }}
+                    style={{ width: '48px', height: '48px', borderRadius: '50%', cursor: 'pointer', border: '1px solid var(--border-glass)' }}
                 >
-                    <ChevronLeft size={24} color="white" />
+                    <ChevronLeft size={24} color="var(--text-main)" />
                 </button>
-                <div className="glass-panel" style={{ padding: '10px 20px', borderRadius: '999px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div className="glass-panel" style={{ padding: '10px 20px', borderRadius: '999px', background: 'var(--bg-card)', border: '1px solid var(--border-glass)' }}>
                     <span className="outfit" style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '12px', letterSpacing: '0.05em' }}>AI Avatar Engine</span>
                 </div>
             </div>

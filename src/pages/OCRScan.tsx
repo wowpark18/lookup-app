@@ -1,104 +1,247 @@
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Tag, Shirt, ChevronLeft, Image as ImageIcon, Zap, X, Sparkles, Bot } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useState, useRef, useEffect } from 'react';
+import { ChevronLeft, Image as ImageIcon, Zap, X, Sparkles, Loader2, Check, Trash2, ArrowRight, RefreshCw } from 'lucide-react';
+import { auth } from '../lib/firebase';
+import { addWardrobeItem, getWardrobeItemCount } from '../services/db';
+import { analyzeClothingImage } from '../services/ai';
+// import { Haptics, ImpactStyle } from '@capacitor/haptics'; // Optional: Install later if needed
+
+
+
+interface ScannedItem {
+    id: number;
+    dataUrl: string;
+    aiResult?: any;
+    status: 'pending' | 'analyzing' | 'completed' | 'failed';
+}
 
 export default function OCRScan() {
     const navigate = useNavigate();
+    const location = useLocation();
+    
+    // States
+    const [phase, setPhase] = useState<'capture' | 'review'>('capture');
     const [scanMode, setScanMode] = useState<'receipt' | 'tag' | 'clothes'>('clothes');
     const [isScanning, setIsScanning] = useState(false);
-    const [capturedItems, setCapturedItems] = useState<{ mode: string, id: number }[]>([]);
-    const [showSubscription, setShowSubscription] = useState(false);
+    const [showFlash, setShowFlash] = useState(false);
+    const [capturedItems, setCapturedItems] = useState<ScannedItem[]>([]);
+    // const [showSubscription, setShowSubscription] = useState(false);
+    const [totalItemCount, setTotalItemCount] = useState(0); 
+    const [isSavingAll, setIsSavingAll] = useState(false);
+    
+    // Camera Refs
     const videoRef = useRef<HTMLVideoElement>(null);
 
-    const [isAnalyzing, setIsAnalyzing] = useState(false); // [다니엘 제안] AI 비전 인식 상태
-
     useEffect(() => {
-        let streamRef: MediaStream | null = null;
-        // Start camera stream
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-                .then(stream => {
-                    streamRef = stream;
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = stream;
-                    }
-                })
-                .catch(err => console.log("카메라 접근 권한이 없습니다.", err));
+        if (auth.currentUser) {
+            getWardrobeItemCount(auth.currentUser.uid).then(setTotalItemCount);
         }
 
+        if (location.state?.photoData) {
+            setCapturedItems([{ id: Date.now(), dataUrl: location.state.photoData, status: 'pending' }]);
+            return;
+        }
+
+        startCamera();
+
         return () => {
-            if (streamRef) {
-                streamRef.getTracks().forEach(track => track.stop());
-            }
+            stopCamera();
         };
     }, []);
 
+    const startCamera = async () => {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+            } catch (err: any) {
+                console.error("카메라 접근 권한이 없습니다.", err);
+                alert("카메라를 시작할 수 없습니다: " + (err.message || "권한이 거부되었거나 보안 연결(HTTPS)이 필요합니다."));
+            }
+        }
+    };
+
+    const stopCamera = () => {
+        if (videoRef.current && videoRef.current.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+        }
+    };
+
     const handleCapture = () => {
-        // 프리미엄 결제 유도 (옷장 30벌 제한 시뮬레이션 - 시연용으로 10벌 등록시 제한)
-        if (capturedItems.length >= 10) {
-            setShowSubscription(true);
+        if (totalItemCount + capturedItems.length >= 30) {
+            // setShowSubscription(true);
+            alert("무료 버전은 30벌까지만 등록 가능합니다. 멤버십을 확인해주세요!");
             return;
         }
 
         if (isScanning) return;
         setIsScanning(true);
+        setShowFlash(true);
+        
+        // Haptic feedback simulation
+        try {
+            // (window as any).Capacitor?.Plugins?.Haptics?.impact({ style: 'heavy' });
+        } catch (e) {
+            console.log("Haptics not available");
+        }
+
+        setTimeout(() => setShowFlash(false), 150);
+
+        let dataUrl = "";
+        if (videoRef.current) {
+            const canvas = document.createElement('canvas');
+            canvas.width = videoRef.current.videoWidth || 480;
+            canvas.height = videoRef.current.videoHeight || 640;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+                dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            }
+        }
+
         setTimeout(() => {
             setIsScanning(false);
-            setCapturedItems(prev => [...prev, { mode: scanMode, id: Date.now() }]);
+            if (dataUrl) {
+                setCapturedItems(prev => [...prev, { id: Date.now(), dataUrl, status: 'pending' }]);
+            }
         }, 600);
     };
 
-    const handleUpload = async () => {
-        if (capturedItems.length === 0) {
-            alert('스캔된 항목이 없습니다.');
-            return;
-        }
+    const startAnalysisPhase = async () => {
+        setPhase('review');
+        stopCamera();
         
-        setIsAnalyzing(true);
+        // [병렬 처리] 2개씩 묶어서 분석
+        const chunk = 2;
+        const pendingIndices = capturedItems
+            .map((item, idx) => (item.status === 'pending' || item.status === 'failed') ? idx : -1)
+            .filter(idx => idx !== -1);
 
-        try {
-            // [느헤미야 팀] 리얼 데이터베이스 연동 및 저장
-            const { auth } = await import('../lib/firebase');
-            const { addWardrobeItem } = await import('../services/db');
-
-            if (auth.currentUser) {
-                const categories = ['top', 'bottom', 'outer', 'shoes'];
-                const colors = ['#f44336', '#3f51b5', '#4caf50', '#ffeb3b', '#607d8b', '#000000', '#ffffff'];
-                const brands = ['Maison Kitsune', 'Ami', 'Nike', 'Zara', 'Uniqlo'];
-                for (let i = 0; i < capturedItems.length; i++) {
-                    const randomCategory = categories[Math.floor(Math.random() * categories.length)];
-                    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-                    const randomBrand = brands[Math.floor(Math.random() * brands.length)];
-                    await addWardrobeItem({
-                        userId: auth.currentUser.uid,
-                        imageUrl: "mock_image_url", // 추후 실제 카메라 이미지 Blob 저장 처리 공간
-                        category: randomCategory,
-                        brand: randomBrand,
-                        color: randomColor, 
-                    });
-                }
-            }
-            
-            setTimeout(() => {
-                setIsAnalyzing(false);
-                alert(`[AI Vision 및 백엔드 저장 완료]\n\n총 ${capturedItems.length}개의 데이터 분석 성공 및 DB 동기화 완료!\n의류 속성: Navy, Cotton 100%\n추천 세탁법: 드라이클리닝 권장\n\n내 옷장에 데이터가 성공적으로 병합되었습니다.`);
-                setCapturedItems([]);
-                navigate('/');
-            }, 1500);
-
-        } catch (e) {
-            console.error(e);
-            alert("데이터베이스 저장에 실패했습니다.");
-            setIsAnalyzing(false);
+        for (let i = 0; i < pendingIndices.length; i += chunk) {
+            const indicesToProcess = pendingIndices.slice(i, i + chunk);
+            // Use allSettled to ensure failure of one doesn't crash the loop
+            await Promise.allSettled(indicesToProcess.map(idx => runAnalysisForItem(idx)));
         }
     };
 
+    const runAnalysisForItem = async (index: number) => {
+        setCapturedItems(prev => prev.map((item, idx) => 
+            idx === index ? { ...item, status: 'analyzing' } : item
+        ));
+        
+        try {
+            const itemToAnalyze = capturedItems[index];
+            const result = await analyzeClothingImage(itemToAnalyze.dataUrl, scanMode);
+            
+            setCapturedItems(prev => prev.map((item, idx) => 
+                idx === index ? { ...item, status: 'completed', aiResult: result } : item
+            ));
+        } catch (e) {
+            console.error(e);
+            setCapturedItems(prev => prev.map((item, idx) => 
+                idx === index ? { ...item, status: 'failed' } : item
+            ));
+        }
+    };
+
+    const handleRetry = (id: number) => {
+        const index = capturedItems.findIndex(item => item.id === id);
+        if (index !== -1) {
+            runAnalysisForItem(index);
+        }
+    };
+
+    const handleEditItem = (id: number, field: string, value: any) => {
+        setCapturedItems(prev => prev.map(item => {
+            if (item.id === id) {
+                const newAiResult = { ...item.aiResult, [field]: value };
+                return { ...item, aiResult: newAiResult };
+            }
+            return item;
+        }));
+    };
+
+    const handleToggleMultiItem = (id: number, field: string, value: string) => {
+        setCapturedItems(prev => prev.map(item => {
+            if (item.id === id) {
+                const current = item.aiResult[field] || [];
+                const updated = current.includes(value)
+                    ? current.filter((v: string) => v !== value)
+                    : [...current, value];
+                return { ...item, aiResult: { ...item.aiResult, [field]: updated } };
+            }
+            return item;
+        }));
+    };
+
+    const handleFinalSave = async () => {
+        if (isSavingAll) return;
+        setIsSavingAll(true);
+
+        try {
+            if (auth.currentUser) {
+                const itemsToSave = capturedItems.filter(i => i.status === 'completed');
+                
+                if (itemsToSave.length === 0) {
+                    alert("분석이 완료된 옷이 없습니다.");
+                    setIsSavingAll(false);
+                    return;
+                }
+
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
+                
+                // Track progress
+                let savedCount = 0;
+                for (const item of itemsToSave) {
+                    const res = item.aiResult;
+                    await addWardrobeItem({
+                        userId: auth.currentUser!.uid,
+                        imageUrl: item.dataUrl,
+                        category: res.category || 'top',
+                        subcategory: res.subcategory || 'Unknown',
+                        brand: (res.brand && res.brand !== 'Unknown' && res.brand !== '어디 제품인가요?') ? res.brand : 'Unknown Brand',
+                        color: res.color || '#ffffff',
+                        materials: res.materials || [],
+                        season: res.seasons || [],
+                        fit: res.fit || 'Regular',
+                        texture: res.texture || [],
+                        laundryGuide: res.laundryGuide || '기본 세탁 권장',
+
+                    });
+                    savedCount++;
+                }
+                
+                alert(`${savedCount}벌의 옷이 옷장에 등록되었습니다! ✨`);
+                navigate('/wardrobe');
+            }
+        } catch (e) {
+            console.error(e);
+            alert("저장 중 오류가 발생했습니다.");
+        } finally {
+            setIsSavingAll(false);
+        }
+    };
+
+    const removeItem = (id: number) => {
+        const newItems = capturedItems.filter(item => item.id !== id);
+        setCapturedItems(newItems);
+        if (newItems.length === 0 && phase === 'review') {
+            setPhase('capture');
+            startCamera();
+        }
+    };
+
+    // UI Helpers
     const getGuideText = () => {
         switch (scanMode) {
-            case 'receipt': return "영수증 전체가 나오도록 화면에 맞춰주세요.\n(웹사이트 및 구매 정보 자동 추출)";
-            case 'tag': return "의류 안쪽의 케어라벨(텍)이 잘 보이게 비춰주세요.\n(소재 및 세탁 기호 자동 추출)";
-            case 'clothes': return "옷의 전체적인 형태가 잘 보이도록 펼쳐서 촬영해주세요.\n(색상, 종류 및 스타일 분석)";
+            case 'receipt': return "영수증 전체를 화면에 맞춰주세요.";
+            case 'tag': return "케어라벨(텍)이 잘 보이게 비춰주세요.";
+            case 'clothes': return "옷의 전체 실루엣이 보이게 해주세요.";
             default: return "";
         }
     };
@@ -108,328 +251,448 @@ export default function OCRScan() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0a0a0a', position: 'relative', overflow: 'hidden' }}
+            style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', position: 'relative', overflow: 'hidden', color: 'var(--text-main)' }}
         >
-            {/* Header */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '24px', zIndex: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div onClick={() => navigate(-1)} style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <ChevronLeft size={24} color="white" />
-                </div>
-                <div className="glass-panel" style={{ padding: '8px 16px', borderRadius: '20px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--primary)' }}>스마트 클로젯 등록</span>
-                </div>
-            </div>
-
-            {/* Camera Viewport */}
-            <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-                <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', filter: isScanning ? 'brightness(1.5) contrast(1.2)' : 'brightness(0.9)' }}
-                />
-
-                {/* Dark Overlay Outside Target Box */}
-                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', pointerEvents: 'none' }} />
-
-                {/* Tracking Guide Box */}
-                <motion.div
-                    animate={{
-                        width: scanMode === 'receipt' ? '70%' : scanMode === 'tag' ? '50%' : '85%',
-                        height: scanMode === 'receipt' ? '60%' : scanMode === 'tag' ? '30%' : '70%'
-                    }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    style={{
-                        position: 'absolute',
-                        left: '50%',
-                        top: '45%',
-                        transform: 'translate(-50%, -50%)',
-                        border: '1.5px solid rgba(255,255,255,0.2)',
-                        borderRadius: '16px',
-                        boxShadow: isScanning ? '0 0 40px var(--primary), inset 0 0 20px var(--primary)' : '0 0 0 9999px rgba(0,0,0,0.4)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 10
+            {/* Standardized Header */}
+            <header style={{ 
+                height: 'auto', 
+                paddingTop: 'calc(8px + env(safe-area-inset-top, 44px))', 
+                paddingBottom: '16px',
+                position: 'fixed', 
+                top: 0,
+                left: 0,
+                right: 0,
+                display: 'grid',
+                gridTemplateColumns: '80px 1fr 80px', // Robust centering
+                alignItems: 'center', 
+                paddingLeft: '20px', 
+                paddingRight: '20px', 
+                zIndex: 100,
+                background: phase === 'capture' ? 'rgba(0,0,0,0.3)' : 'var(--bg-header)',
+                backdropFilter: 'blur(30px)',
+                borderBottom: phase === 'review' ? '1px solid var(--border-glass)' : 'none',
+                transition: 'all 0.3s ease'
+            }}>
+                <motion.button 
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => {
+                        if (phase === 'review') {
+                            setPhase('capture');
+                            startCamera();
+                        } else {
+                            navigate(-1);
+                        }
+                    }} 
+                    style={{ 
+                        width: '36px', height: '36px', borderRadius: '12px', 
+                        background: phase === 'capture' ? 'rgba(255,255,255,0.1)' : 'var(--bg-card)', 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px solid var(--border-glass)' 
                     }}
                 >
-                    {/* Corners */}
-                    <div style={{ position: 'absolute', top: '-2px', left: '-2px', width: '24px', height: '24px', borderTop: '3px solid var(--primary)', borderLeft: '3px solid var(--primary)', borderRadius: '16px 0 0 0' }} />
-                    <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '24px', height: '24px', borderTop: '3px solid var(--primary)', borderRight: '3px solid var(--primary)', borderRadius: '0 16px 0 0' }} />
-                    <div style={{ position: 'absolute', bottom: '-2px', left: '-2px', width: '24px', height: '24px', borderBottom: '3px solid var(--primary)', borderLeft: '3px solid var(--primary)', borderRadius: '0 0 0 16px' }} />
-                    <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '24px', height: '24px', borderBottom: '3px solid var(--primary)', borderRight: '3px solid var(--primary)', borderRadius: '0 0 16px 0' }} />
+                    <ChevronLeft size={20} color={phase === 'capture' ? 'white' : 'var(--text-main)'} />
+                </motion.button>
 
-                    {/* Scanning Laser */}
-                    {isScanning && (
-                        <motion.div
-                            animate={{ top: ['0%', '100%', '0%'] }}
-                            transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                            style={{ position: 'absolute', width: '100%', height: '3px', background: 'var(--primary)', boxShadow: '0 0 20px var(--primary)' }}
-                        />
-                    )}
-                </motion.div>
-
-                {/* Guide Text */}
-                <div style={{ position: 'absolute', bottom: '24px', left: 0, right: 0, textAlign: 'center', padding: '0 24px', zIndex: 10 }}>
-                    <motion.div
-                        key={scanMode}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="glass-panel"
-                        style={{ display: 'inline-block', padding: '12px 20px', borderRadius: '16px', background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.1)' }}
-                    >
-                        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
-                            {getGuideText()}
-                        </span>
-                    </motion.div>
+                <div className="outfit" style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '4px', color: phase === 'capture' ? 'white' : 'var(--text-main)', textAlign: 'center' }}>
+                    LOOK-UP
                 </div>
-            </div>
 
-            {/* Bottom Controls */}
-            <div style={{ background: 'var(--bg-dark)', padding: '24px 0 100px 0', borderTopLeftRadius: '32px', borderTopRightRadius: '32px', borderTop: '1px solid rgba(255,255,255,0.05)', zIndex: 30, boxShadow: '0 -10px 40px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '32px' }}>
-
-                {/* Shutter Button Area */}
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '32px' }}>
-                    {/* Shopping Cart / Captured Stack */}
-                    <div
-                        onClick={capturedItems.length > 0 ? handleUpload : undefined}
-                        style={{ position: 'relative', width: '60px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: capturedItems.length > 0 ? 'pointer' : 'default' }}
-                        className={capturedItems.length > 0 ? "hover-scale" : ""}
-                    >
-                        {capturedItems.length > 0 ? (
-                            <>
-                                {/* Stacked Thumbnails Effect */}
-                                {capturedItems.slice(-3).map((item, idx, arr) => (
-                                    <motion.div
-                                        key={item.id}
-                                        initial={{ scale: 0, opacity: 0, x: -20 }}
-                                        animate={{ scale: 1, opacity: 1, x: 0 }}
-                                        style={{
-                                            position: 'absolute',
-                                            width: '48px', height: '48px',
-                                            borderRadius: '12px',
-                                            background: 'var(--bg-card)',
-                                            border: '2px solid rgba(255,255,255,0.8)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            transform: `rotate(${(idx - arr.length + 1) * 8}deg) translate(${(idx - arr.length + 1) * 4}px, ${(idx - arr.length + 1) * -4}px)`,
-                                            zIndex: idx,
-                                            boxShadow: '0 4px 10px rgba(0,0,0,0.5)'
-                                        }}
-                                    >
-                                        {item.mode === 'receipt' ? <FileText size={20} color="var(--primary)" /> :
-                                            item.mode === 'tag' ? <Tag size={20} color="var(--primary)" /> :
-                                                <Shirt size={20} color="var(--primary)" />}
-                                    </motion.div>
-                                ))}
-                                {/* Badge */}
-                                <motion.div
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    key={`badge-${capturedItems.length}`}
-                                    style={{
-                                        position: 'absolute', top: '-6px', right: '-6px',
-                                        background: 'var(--primary)', color: 'white',
-                                        fontSize: '12px', fontWeight: 'bold',
-                                        width: '24px', height: '24px', borderRadius: '50%',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        zIndex: 10, border: '2px solid var(--bg-dark)'
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                    {phase === 'review' && (
+                        <>
+                            {capturedItems.some(i => i.status === 'failed') && (
+                                <motion.button
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => {
+                                        capturedItems.forEach((item, idx) => {
+                                            if (item.status === 'failed') runAnalysisForItem(idx);
+                                        });
+                                    }}
+                                    style={{ 
+                                        width: '36px', height: '36px', borderRadius: '12px', 
+                                        background: 'var(--bg-card)', color: 'var(--primary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px solid var(--border-glass)' 
                                     }}
                                 >
-                                    {capturedItems.length}
-                                </motion.div>
-                            </>
-                        ) : (
-                            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                <ImageIcon size={20} color="rgba(255,255,255,0.3)" />
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Main Capture Button */}
-                    <motion.div
-                        whileTap={{ scale: 0.9 }}
-                        onClick={handleCapture}
-                        style={{ width: '76px', height: '76px', borderRadius: '50%', border: '4px solid rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: 'transparent' }}
-                    >
-                        <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: isScanning ? 'var(--primary)' : 'white', transition: '0.3s' }} />
-                    </motion.div>
-
-                    {/* Final Submission Button (Only visible when items are in cart) */}
-                    <div style={{ width: '60px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {capturedItems.length > 0 ? (
+                                    <Zap size={18} fill="currentColor" />
+                                </motion.button>
+                            )}
                             <motion.button
-                                initial={{ scale: 0, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                onClick={handleUpload}
-                                className="hover-scale"
-                                style={{
-                                    background: 'var(--primary)', border: 'none', borderRadius: '50%',
-                                    width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    cursor: 'pointer', boxShadow: '0 4px 15px rgba(157, 78, 221, 0.4)'
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => {
+                                    if (confirm("정말로 모든 항목을 삭제하시겠습니까?")) {
+                                        setCapturedItems([]);
+                                        setPhase('capture');
+                                        startCamera();
+                                    }
+                                }}
+                                style={{ 
+                                    width: '36px', height: '36px', borderRadius: '12px', 
+                                    background: 'var(--bg-card)', color: '#ff6464',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px solid var(--border-glass)' 
                                 }}
                             >
-                                <span style={{ color: 'white', fontWeight: 700, fontSize: '12px' }}>완료</span>
+                                <X size={20} />
                             </motion.button>
-                        ) : (
-                            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                <Zap size={20} color="var(--text-muted)" />
-                            </div>
-                        )}
-                    </div>
+                        </>
+                    )}
                 </div>
+            </header>
 
-                {/* Mode Switcher Tabs (Bottom Nav Style) */}
-                <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingLeft: '24px', paddingRight: '24px', paddingBottom: '80px' }}>
-                    <div onClick={() => setScanMode('receipt')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', cursor: 'pointer', opacity: scanMode === 'receipt' ? 1 : 0.4, transition: '0.3s' }}>
-                        <FileText size={22} color={scanMode === 'receipt' ? 'var(--primary)' : 'white'} />
-                        <span style={{ fontSize: '11px', fontWeight: 600, color: scanMode === 'receipt' ? 'var(--primary)' : 'white' }}>영수증</span>
-                    </div>
-                    <div onClick={() => setScanMode('tag')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', cursor: 'pointer', opacity: scanMode === 'tag' ? 1 : 0.4, transition: '0.3s' }}>
-                        <Tag size={22} color={scanMode === 'tag' ? 'var(--primary)' : 'white'} />
-                        <span style={{ fontSize: '11px', fontWeight: 600, color: scanMode === 'tag' ? 'var(--primary)' : 'white' }}>태그</span>
-                    </div>
-                    <div onClick={() => setScanMode('clothes')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', cursor: 'pointer', opacity: scanMode === 'clothes' ? 1 : 0.4, transition: '0.3s' }}>
-                        <Shirt size={22} color={scanMode === 'clothes' ? 'var(--primary)' : 'white'} />
-                        <span style={{ fontSize: '11px', fontWeight: 600, color: scanMode === 'clothes' ? 'var(--primary)' : 'white' }}>옷 사진</span>
-                    </div>
-                </div>
-            </div>
-
-            <AnimatePresence>
-                {/* --- Subscription Modal --- */}
-                {
-                    showSubscription && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            style={{
-                                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 120,
-                                background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(15px)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px'
-                            }}
-                        >
+            {phase === 'capture' ? (
+                <>
+                    {/* Viewport */}
+                    <div style={{ flex: 1, position: 'relative' }}>
+                        <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                        
+                        {/* Futuristic Scanner Overlay */}
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                             <motion.div
-                                initial={{ scale: 0.95, y: 20 }}
-                                animate={{ scale: 1, y: 0 }}
-                                exit={{ scale: 0.95, y: 20 }}
-                                className="glass-panel"
-                                style={{
-                                    width: '100%', maxWidth: '90%', padding: '24px', borderRadius: '32px',
-                                    display: 'flex', flexDirection: 'column', position: 'relative',
-                                    border: '1px solid rgba(255, 0, 110, 0.4)',
-                                    boxShadow: '0 20px 60px rgba(255, 0, 110, 0.25)',
-                                    maxHeight: '85vh', overflowY: 'auto'
+                                animate={{
+                                    width: scanMode === 'receipt' ? '70%' : '85%',
+                                    height: scanMode === 'receipt' ? '80%' : '60%',
+                                    borderColor: isScanning ? 'var(--primary)' : 'rgba(255,255,255,0.3)'
+                                }}
+                                style={{ border: '1.5px solid', borderRadius: '40px', position: 'relative' }}
+                            >
+                                {/* Corner Accents */}
+                                {[0, 90, 180, 270].map(rot => (
+                                    <div key={rot} style={{ position: 'absolute', top: -2, left: -2, width: '32px', height: '32px', borderTop: '4px solid white', borderLeft: '4px solid white', borderRadius: '40px 0 0 0', transform: `rotate(${rot}deg)`, transformOrigin: 'center' }} />
+                                ))}
+                                
+                                {isScanning && (
+                                    <motion.div
+                                        initial={{ top: '0%', opacity: 0 }}
+                                        animate={{ top: ['0%', '100%', '0%'], opacity: [0, 1, 0] }}
+                                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                                        style={{ 
+                                            position: 'absolute', left: '2%', right: '2%', height: '3px', 
+                                            background: 'linear-gradient(90deg, transparent, var(--primary), transparent)', 
+                                            boxShadow: '0 0 15px var(--primary), 0 0 30px var(--primary)',
+                                            zIndex: 20
+                                        }}
+                                    />
+                                )}
+                                <motion.div
+                                    animate={{ opacity: isScanning ? [0.2, 0.5, 0.2] : 0 }}
+                                    transition={{ duration: 1, repeat: Infinity }}
+                                    style={{ position: 'absolute', inset: 0, borderRadius: '40px', background: 'radial-gradient(circle, var(--primary-glow) 0%, transparent 70%)', pointerEvents: 'none' }}
+                                />
+                            </motion.div>
+                        </div>
+
+                        {/* Shutter Flash */}
+                        <AnimatePresence>
+                            {showFlash && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    style={{ position: 'absolute', inset: 0, background: 'white', zIndex: 200 }}
+                                />
+                            )}
+                        </AnimatePresence>
+
+                        {/* Guide Text */}
+                        <div style={{ position: 'absolute', bottom: '40px', left: 0, right: 0, textAlign: 'center' }}>
+                            <p style={{ color: 'white', fontSize: '14px', fontWeight: 800, textShadow: '0 2px 10px rgba(0,0,0,0.8)', letterSpacing: '0.5px' }}>
+                                {getGuideText()}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div style={{ background: 'var(--bg-app)', padding: '24px 24px calc(24px + env(safe-area-inset-bottom, 20px))', borderTop: '1px solid var(--border-glass)' }}>
+                        {/* Mode Picker */}
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '28px', marginBottom: '32px' }}>
+                            {['clothes', 'tag', 'receipt'].map(m => (
+                                <button
+                                    key={m}
+                                    onClick={() => setScanMode(m as any)}
+                                    style={{ 
+                                        background: 'transparent', border: 'none', 
+                                        color: scanMode === m ? 'var(--primary)' : 'var(--text-muted)',
+                                        fontSize: '11px', fontWeight: 900, cursor: 'pointer', transition: 'all 0.3s',
+                                        letterSpacing: '1px'
+                                    }}
+                                >
+                                    {m.toUpperCase()}
+                                    {scanMode === m && <motion.div layoutId="m-dot" style={{ height: '4px', width: '4px', borderRadius: '50%', background: 'var(--primary)', margin: '4px auto 0' }} />}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            {/* Gallery Preview */}
+                            <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: 'var(--bg-card)', border: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
+                                {capturedItems.length > 0 ? (
+                                    <img src={capturedItems[capturedItems.length - 1].dataUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                    <ImageIcon size={24} color="var(--text-muted)" />
+                                )}
+                                {capturedItems.length > 0 && (
+                                    <div style={{ position: 'absolute', top: -4, right: -4, background: 'var(--primary)', color: 'white', fontSize: '10px', fontWeight: 900, padding: '2px 8px', borderRadius: '10px' }}>
+                                        {capturedItems.length}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Shutter Button */}
+                            <motion.button
+                                whileTap={{ scale: 0.85 }}
+                                onClick={handleCapture}
+                                style={{ width: '84px', height: '84px', borderRadius: '50%', border: '5px solid var(--border-glass)', padding: '6px', background: 'transparent' }}
+                            >
+                                <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'white', boxShadow: '0 0 20px rgba(255,255,255,0.3)' }} />
+                            </motion.button>
+
+                            {/* Proceed to Review */}
+                            <motion.button
+                                whileTap={{ scale: 0.9 }}
+                                onClick={startAnalysisPhase}
+                                disabled={capturedItems.length === 0}
+                                style={{ 
+                                    width: '64px', height: '64px', borderRadius: '32px', 
+                                    background: capturedItems.length > 0 ? 'var(--primary)' : 'var(--bg-card)', 
+                                    color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    opacity: capturedItems.length > 0 ? 1 : 0.5,
+                                    boxShadow: capturedItems.length > 0 ? '0 10px 20px rgba(157,78,221,0.2)' : 'none'
                                 }}
                             >
-                                <div style={{ position: 'absolute', top: '24px', right: '24px', cursor: 'pointer', zIndex: 10 }} onClick={() => setShowSubscription(false)}>
-                                    <X size={24} color="rgba(255,255,255,0.7)" />
+                                <ArrowRight size={28} />
+                            </motion.button>
+                        </div>
+                    </div>
+                </>
+            ) : (
+                /* Review Phase */
+                <main style={{ flex: 1, padding: '24px', paddingTop: 'calc(100px + env(safe-area-inset-top))', overflowY: 'auto' }}>
+                    <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ padding: '4px 10px', borderRadius: '10px', background: 'var(--primary-glow)', border: '1px solid var(--primary)' }}>
+                            <span className="outfit" style={{ fontSize: '10px', fontWeight: 900, color: 'var(--primary)', letterSpacing: '1px' }}>SMART BATCH ANALYSIS</span>
+                        </div>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>아이템별 정보를 확인해주세요</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '120px' }}>
+                        {capturedItems.map((item, index) => (
+                            <motion.div
+                                key={item.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                                className="glass-panel"
+                                style={{ 
+                                    padding: '20px', display: 'flex', gap: '20px', alignItems: 'center', 
+                                    position: 'relative', background: 'var(--bg-card)', borderRadius: '28px', 
+                                    border: item.status === 'failed' ? '1px solid rgba(255,100,100,0.3)' : '1px solid var(--border-glass)',
+                                    boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
+                                }}
+                            >
+                                <div style={{ width: '90px', height: '90px', borderRadius: '20px', overflow: 'hidden', flexShrink: 0, position: 'relative', border: '1px solid var(--border-glass)', backgroundColor: 'var(--bg-app)' }}>
+                                    <img src={item.dataUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    {item.status === 'analyzing' && (
+                                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', gap: '8px' }}>
+                                            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}>
+                                                <RefreshCw size={24} color="var(--primary)" />
+                                            </motion.div>
+                                            <span className="outfit" style={{ fontSize: '8px', fontWeight: 900, color: 'var(--primary)', letterSpacing: '1px' }}>AI VISION</span>
+                                        </div>
+                                    )}
+                                    {item.status === 'completed' && (
+                                        <div style={{ position: 'absolute', top: 6, right: 6, background: '#00ff00', borderRadius: '50%', padding: '3px', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
+                                            <Check size={12} color="black" />
+                                        </div>
+                                    )}
                                 </div>
+                                
+                                <div style={{ flex: 1, minWidth: 0, paddingRight: '12px' }}>
+                                    {item.status === 'completed' ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            {/* Top Line: Subcategory & Brand */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                <input 
+                                                    value={item.aiResult.subcategory || ''}
+                                                    onChange={(e) => handleEditItem(item.id, 'subcategory', e.target.value)}
+                                                    placeholder="아이템 이름"
+                                                    style={{ 
+                                                        background: 'transparent', border: 'none', color: 'var(--text-main)', 
+                                                        fontSize: '15px', fontWeight: 900, padding: 0, width: '100%',
+                                                        outline: 'none', borderBottom: '1px solid transparent' 
+                                                    }}
+                                                    onFocus={(e) => e.target.style.borderBottom = '1px solid var(--primary)'}
+                                                    onBlur={(e) => e.target.style.borderBottom = '1px solid transparent'}
+                                                />
+                                                <input 
+                                                    value={item.aiResult.brand || ''}
+                                                    onChange={(e) => handleEditItem(item.id, 'brand', e.target.value)}
+                                                    placeholder="브랜드 명"
+                                                    style={{ 
+                                                        background: 'transparent', border: 'none', color: 'var(--primary)', 
+                                                        fontSize: '12px', fontWeight: 900, padding: 0, width: '100%',
+                                                        outline: 'none'
+                                                    }}
+                                                />
+                                            </div>
 
-                                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                                    <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', boxShadow: '0 10px 30px rgba(255, 0, 110, 0.3)' }}>
-                                        <Sparkles size={28} color="white" />
-                                    </div>
-                                    <h2 className="outfit text-gradient" style={{ fontSize: '24px', fontWeight: 800, marginBottom: '8px' }}>
-                                        옷장 용령 초과!
-                                    </h2>
-                                    <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.4 }}>
-                                        계속 등록하려면 라이프스타일에<br />맞는 요금제로 업그레이드 하세요.
-                                    </p>
+                                            {/* Middle Line: Color & Fit */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--bg-app)', padding: '2px 8px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                                                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: item.aiResult.color || '#fff', border: '1px solid rgba(0,0,0,0.1)' }} />
+                                                    <input 
+                                                        value={item.aiResult.color || ''}
+                                                        onChange={(e) => handleEditItem(item.id, 'color', e.target.value)}
+                                                        style={{ background: 'transparent', border: 'none', fontSize: '9px', fontWeight: 900, color: 'var(--text-muted)', width: '45px', padding: 0 }}
+                                                    />
+                                                </div>
+                                                <select 
+                                                    value={item.aiResult.fit || 'Regular'}
+                                                    onChange={(e) => handleEditItem(item.id, 'fit', e.target.value)}
+                                                    style={{ background: 'var(--bg-app)', border: '1px solid var(--border-glass)', borderRadius: '8px', fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', padding: '2px 4px' }}
+                                                >
+                                                    {['Slim', 'Regular', 'Relaxed', 'Oversized'].map(f => <option key={f} value={f}>{f}</option>)}
+                                                </select>
+                                            </div>
+
+                                            {/* Bottom Line: Seasons & Materials (Togglable labels) */}
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                                {['Spring', 'Summer', 'Fall', 'Winter'].map(s => (
+                                                    <button 
+                                                        key={s}
+                                                        onClick={() => handleToggleMultiItem(item.id, 'seasons', s)}
+                                                        className="outfit"
+                                                        style={{ 
+                                                            fontSize: '8px', fontWeight: 950, padding: '2px 6px', borderRadius: '6px', 
+                                                            border: '1px solid var(--border-glass)',
+                                                            background: item.aiResult.seasons?.includes(s) ? 'var(--primary)' : 'rgba(0,0,0,0.03)',
+                                                            color: item.aiResult.seasons?.includes(s) ? 'white' : 'var(--text-muted)',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        {s[0]}
+                                                    </button>
+                                                ))}
+                                                <div style={{ height: '12px', width: '1px', background: 'var(--border-glass)', margin: '0 2px' }} />
+                                                {item.aiResult.materials?.slice(0, 3).map((m: string, i: number) => (
+                                                    <span key={i} className="outfit" style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-muted)', background: 'rgba(0,0,0,0.03)', padding: '2px 4px', borderRadius: '4px' }}>{m}</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : item.status === 'failed' ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <p className="outfit" style={{ fontSize: '12px', fontWeight: 900, color: '#ff6464', margin: 0, letterSpacing: '0.5px' }}>ANALYSIS FAILED</p>
+                                            <button 
+                                                onClick={() => handleRetry(item.id)}
+                                                style={{ alignSelf: 'flex-start', padding: '6px 14px', borderRadius: '12px', background: 'var(--primary)', color: 'white', border: 'none', fontSize: '10px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px var(--primary-glow)' }}
+                                            >
+                                                <Zap size={12} fill="white" /> RETRY
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <Sparkles size={14} className="spin" color="var(--primary)" />
+                                                <span className="outfit" style={{ fontSize: '11px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px' }}>
+                                                    {item.status === 'analyzing' ? 'DECODING STYLE...' : 'IN QUEUE...'}
+                                                </span>
+                                            </div>
+                                            <div style={{ width: '100%', height: '4px', background: 'rgba(0,0,0,0.03)', borderRadius: '2px', overflow: 'hidden' }}>
+                                                {item.status === 'analyzing' && (
+                                                    <motion.div 
+                                                        initial={{ x: '-100%' }}
+                                                        animate={{ x: '100%' }}
+                                                        transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                                                        style={{ width: '50%', height: '100%', background: 'linear-gradient(90deg, transparent, var(--primary), transparent)' }}
+                                                    />
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                    {/* Pro Plan */}
-                                    <div style={{
-                                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: '20px', padding: '20px', position: 'relative', overflow: 'hidden'
-                                    }}>
-                                        <div style={{ position: 'absolute', top: 0, right: 0, background: 'var(--primary)', color: 'white', fontSize: '11px', fontWeight: 800, padding: '4px 12px', borderBottomLeftRadius: '12px' }}>
-                                            ⭐ 가장 인기
-                                        </div>
-                                        <h3 className="outfit" style={{ fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '8px' }}>Look-UP Pro</h3>
-                                        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '16px' }}>나만의 완벽한 스마트 클로젯</p>
-
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                                            <div className="flex-row items-center gap-2"><Shirt size={14} color="var(--primary)" /><span style={{ fontSize: '13px' }}>옷장 등록 무제한 (무료 30벌)</span></div>
-                                            <div className="flex-row items-center gap-2"><Bot size={14} color="var(--secondary)" /><span style={{ fontSize: '13px' }}>AI 코디 추천 무제한 + 체형/컬러 매칭</span></div>
-                                            <div className="flex-row items-center gap-2" style={{ opacity: 0.6 }}><Sparkles size={14} /><span style={{ fontSize: '13px' }}>본인 프로필 1개 전용 (추가 불가)</span></div>
-                                        </div>
-
-                                        <button
-                                            onClick={() => navigate('/')}
-                                            style={{
-                                                width: '100%', padding: '12px', borderRadius: '12px',
-                                                background: 'rgba(255, 0, 110, 0.2)', color: 'white', border: '1px solid rgba(255, 0, 110, 0.5)',
-                                                fontSize: '15px', fontWeight: 700, cursor: 'pointer'
-                                            }}
-                                        >
-                                            월 ₩4,900
-                                        </button>
-                                    </div>
-
-                                    {/* Family Plan */}
-                                    <div style={{
-                                        background: 'linear-gradient(145deg, rgba(58, 134, 255, 0.1), rgba(157, 78, 221, 0.15))',
-                                        border: '1px solid rgba(157, 78, 221, 0.4)',
-                                        borderRadius: '20px', padding: '20px', position: 'relative'
-                                    }}>
-                                        <h3 className="outfit" style={{ fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '8px' }}>Look-UP Family</h3>
-                                        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '16px' }}>우리 가족 옷장 통합 관리</p>
-
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                                            <div className="flex-row items-center gap-2"><Sparkles size={14} color="#3a86ff" /><span style={{ fontSize: '13px', fontWeight: 600 }}>가족 프로필 최대 4인 (배우자/자녀)</span></div>
-                                            <div className="flex-row items-center gap-2"><Shirt size={14} color="#3a86ff" /><span style={{ fontSize: '13px', fontWeight: 600 }}>가족 간 옷장 공유 및 공용 옷장 지원</span></div>
-                                            <div className="flex-row items-center gap-2"><Bot size={14} color="#3a86ff" /><span style={{ fontSize: '13px' }}>Pro의 모든 기능 포함</span></div>
-                                        </div>
-
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>(*5인 이상은 구성원 추가 결제 필요)</span>
-                                            <span style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 700 }}>1인당 월 약 2,200원</span>
-                                        </div>
-                                        <button
-                                            onClick={() => navigate('/')}
-                                            style={{
-                                                width: '100%', padding: '12px', borderRadius: '12px',
-                                                background: 'linear-gradient(90deg, #3a86ff, var(--secondary))',
-                                                color: 'white', border: 'none',
-                                                fontSize: '15px', fontWeight: 700, cursor: 'pointer',
-                                                boxShadow: '0 8px 15px rgba(58, 134, 255, 0.3)'
-                                            }}
-                                        >
-                                            월 ₩8,900
-                                        </button>
-                                    </div>
+                                
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <button 
+                                        onClick={() => removeItem(item.id)}
+                                        style={{ width: '40px', height: '40px', borderRadius: '14px', background: 'rgba(255,100,100,0.1)', border: 'none', color: '#ff6464', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+                                    >
+                                        <Trash2 size={20} />
+                                    </button>
                                 </div>
-                                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: '16px' }}>언제든지 약정 없이 취소할 수 있습니다.</span>
                             </motion.div>
-                        </motion.div>
-                    )
-                }
-                
-                {/* [다니엘 제안] AI 분석 진행 중 UI 추가 (모세법 통과 후 안전한 위치) */}
-                {
-                    isAnalyzing && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
+                        ))}
+                    </div>
+
+                    {/* Final Action Bar */}
+                    <div style={{ 
+                        position: 'fixed', bottom: 0, left: 0, right: 0, 
+                        padding: '24px 24px calc(24px + env(safe-area-inset-bottom, 20px))', 
+                        background: 'linear-gradient(to top, var(--bg-app), transparent)',
+                        zIndex: 100
+                    }}>
+                        <motion.button
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleFinalSave}
+                            disabled={isSavingAll || capturedItems.filter(i => i.status === 'completed').length === 0}
                             style={{
-                                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 120,
-                                background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
-                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                                width: '100%', padding: '20px', borderRadius: '24px',
+                                background: 'var(--text-main)', color: 'var(--bg-app)',
+                                border: 'none', fontWeight: 900, fontSize: '16px', letterSpacing: '1px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
+                                boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+                                cursor: (isSavingAll || capturedItems.filter(i => i.status === 'completed').length === 0) ? 'not-allowed' : 'pointer'
                             }}
                         >
-                            <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}>
-                                <Bot size={64} color="var(--primary)" />
+                            {isSavingAll ? (
+                                <>
+                                    <Loader2 size={20} className="spin" />
+                                    저장 중...
+                                </>
+                            ) : (
+                                <>
+                                    옷장에 모두 등록하기 ({capturedItems.filter(i => i.status === 'completed').length}벌)
+                                    <Sparkles size={18} />
+                                </>
+                            )}
+                        </motion.button>
+                    </div>
+                </main>
+            )}
+
+            {/* Final Saving Progress Overlay */}
+            <AnimatePresence>
+                {isSavingAll && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(20px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                        <div style={{ position: 'relative', width: '120px', height: '120px', marginBottom: '40px' }}>
+                            <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                                style={{ position: 'absolute', inset: 0, border: '2px dashed var(--primary)', borderRadius: '50%', opacity: 0.3 }}
+                            />
+                            <motion.div
+                                animate={{ scale: [1, 1.1, 1] }}
+                                transition={{ duration: 2, repeat: Infinity }}
+                                style={{ position: 'absolute', inset: '15%', background: 'var(--primary)', borderRadius: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 40px var(--primary-glow)' }}
+                            >
+                                <Check size={40} color="white" />
                             </motion.div>
-                            <h2 style={{ color: 'white', marginTop: '24px', fontSize: '20px', fontWeight: 700 }}>AI Vision 분석 중...</h2>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '8px' }}>색상, 소재, 세탁 기호를 파싱하고 있습니다.</p>
-                        </motion.div>
-                    )
-                }
+                        </div>
+                        <h2 className="outfit" style={{ fontSize: '20px', fontWeight: 900, color: 'white', letterSpacing: '2px', marginBottom: '8px' }}>CURATING CLOSET</h2>
+                        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontWeight: 600 }}>대표님의 옷장에 보관하는 중입니다...</p>
+                        
+                        <div style={{ width: '200px', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', marginTop: '30px', overflow: 'hidden' }}>
+                            <motion.div
+                                initial={{ width: '0%' }}
+                                animate={{ width: '100%' }}
+                                transition={{ duration: 2, ease: 'easeInOut' }}
+                                style={{ height: '100%', background: 'var(--primary)' }}
+                            />
+                        </div>
+                    </motion.div>
+                )}
             </AnimatePresence>
-        </motion.div >
+        </motion.div>
     );
 }

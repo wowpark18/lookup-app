@@ -1,0 +1,17 @@
+{
+    "models": {
+        "local-gemma": {
+            "provider": "ollama",
+            "baseUrl": "http://localhost:11434",
+            "model": "gemma4:e4b",
+            "label": "Gemma 4 (Ollama - Local)"
+        },
+        "solomon": {
+            "provider": "ollama",
+            "baseUrl": "http://localhost:11434",
+            "model": "gemma4:e4b",
+            "label": "Solomon"
+        }
+    },
+    "defaultModel": "local-gemma"
+}
