@@ -31,7 +31,8 @@ const FASHION_IMAGES = [
 // ─── 메인 추천 함수: 정교한 AI 엔진 ───────────────────────────────────────
 export async function getAIRecommendations(
     userId: string,
-    weather: WeatherData | null
+    weather: WeatherData | null,
+    schedule: string = '일상/휴식'
 ): Promise<OutfitRecommendation[]> {
 
     const weatherInfo = weather ? `${weather.description}, 기온 ${weather.temp}도` : "선선한 봄 날씨";
@@ -41,10 +42,11 @@ export async function getAIRecommendations(
     ]);
 
     const personalColor = profile?.personalColor || "미설정";
+    const contextInfo = `날씨: ${weatherInfo}, 오늘 일정/TPO: ${schedule}`;
     
     try {
-        // [Refined Step] AI에게 3가지 컨셉 제안 요청 (퍼스널 컬러 포함)
-        const concepts = await generateStyleConcepts(weatherInfo, wardrobeItems, personalColor);
+        // [Refined Step] AI에게 3가지 컨셉 제안 요청 (퍼스널 컬러 및 일정 포함)
+        const concepts = await generateStyleConcepts(contextInfo, wardrobeItems, personalColor);
         
         if (concepts && Array.isArray(concepts) && concepts.length >= 3) {
             return concepts.slice(0, 3).map((c, idx) => ({

@@ -21,6 +21,8 @@ export interface UserProfile {
         hip: number;
         legLength: number;
     };
+    bodyShape?: string; // e.g., '역삼각형', '직사각형', '타원형', '모래시계형'
+    preferredStyles?: string[]; // e.g., ['미니멀', '스트릿', '캐주얼', '비즈니스']
     personalColor?: string;
     personalColorResult?: any;
 }

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Camera, Image as ImageIcon, ChevronRight, Sparkles, X, SlidersHorizontal, Check, Palette } from 'lucide-react';
 import { getWardrobeItems, getUserProfile, deleteWardrobeItem, type WardrobeItem } from '../services/db';
 import { auth } from '../lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 const CATEGORIES = [
@@ -54,26 +55,28 @@ export default function Wardrobe() {
     const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
 
     useEffect(() => {
-        async function loadItems() {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setIsLoading(true);
             try {
-                if (auth.currentUser) {
+                if (user) {
                     const [dbItems, profile] = await Promise.all([
-                        getWardrobeItems(auth.currentUser.uid),
-                        getUserProfile(auth.currentUser.uid)
+                        getWardrobeItems(user.uid),
+                        getUserProfile(user.uid)
                     ]);
                     setItems(dbItems.length > 0 ? dbItems : MOCK_ITEMS);
                     setUserProfile(profile);
                 } else {
                     setItems(MOCK_ITEMS);
+                    setUserProfile(null);
                 }
             } catch {
                 setItems(MOCK_ITEMS);
             } finally {
                 setIsLoading(false);
             }
-        }
-        loadItems();
+        });
+
+        return () => unsubscribe();
     }, []);
 
     const handleAlbumSelect = async () => {
@@ -395,10 +398,11 @@ export default function Wardrobe() {
                                         animate={{ opacity: 1, scale: 1 }}
                                         exit={{ opacity: 0, scale: 0.9 }}
                                         transition={{ delay: idx * 0.05, ease: [0.4, 0, 0.2, 1] }}
+                                        whileHover={{ y: -5, boxShadow: '0 20px 40px rgba(0,0,0,0.08)' }}
                                         whileTap={{ scale: 0.96 }}
                                         onClick={() => setSelectedItem(item)}
                                         className="glass-panel"
-                                        style={{ borderRadius: '32px', overflow: 'hidden', cursor: 'pointer', border: '1px solid var(--border-glass)' }}
+                                        style={{ borderRadius: '32px', overflow: 'hidden', cursor: 'pointer', border: '1px solid var(--border-glass)', background: 'linear-gradient(180deg, var(--bg-card) 0%, rgba(255,255,255,0.95) 100%)' }}
                                     >
                                         {/* Image */}
                                         <div style={{ height: '220px', backgroundColor: 'var(--bg-app)', overflow: 'hidden', position: 'relative' }}>

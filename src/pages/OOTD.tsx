@@ -22,7 +22,9 @@ const MOCK_WARDROBE: OOTDItem[] = [
 
 export default function OOTD() {
     const today = new Date();
-    const [selectedDay, setSelectedDay] = useState(today.getDate());
+    const [selectedDate, setSelectedDate] = useState<Date>(today);
+    const [showCalendar, setShowCalendar] = useState(false);
+    const [currentMonthDate, setCurrentMonthDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
     const [activeTab, setActiveTab] = useState<'record' | 'closet'>('record');
     const [wearing, setWearing] = useState<OOTDItem[]>([]);
     const [wardrobeItems, setWardrobeItems] = useState<OOTDItem[]>([]);
@@ -49,6 +51,7 @@ export default function OOTD() {
         d.setDate(today.getDate() - 7 + i);
         const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
         return { 
+            dateObj: d,
             day: d.getDate(), 
             month: d.getMonth() + 1,
             year: d.getFullYear(),
@@ -58,10 +61,20 @@ export default function OOTD() {
         };
     });
 
-    const selectedDateObj = dates.find(d => d.day === selectedDay) || dates[dates.findIndex(d => d.isToday)];
-    const selectedDateKey = `${selectedDateObj.year}-${selectedDateObj.month}-${selectedDateObj.day}`;
-    const isToday = selectedDateObj.isToday;
+    const selectedDateKey = `${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()}`;
+    const isToday = selectedDate.getDate() === today.getDate() && selectedDate.getMonth() === today.getMonth() && selectedDate.getFullYear() === today.getFullYear();
     const currentRecord = historyMap[selectedDateKey];
+
+    const prevMonth = () => {
+        setCurrentMonthDate(new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() - 1, 1));
+    };
+
+    const nextMonth = () => {
+        setCurrentMonthDate(new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + 1, 1));
+    };
+
+    const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+    const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
 
     // 초기 데이터 로드
     useEffect(() => {
@@ -102,7 +115,7 @@ export default function OOTD() {
         } else {
             setWearing([]);
         }
-    }, [selectedDay, currentRecord, wardrobeItems]);
+    }, [selectedDateKey, currentRecord, wardrobeItems]);
 
     const handleSave = async () => {
         if (!auth.currentUser || wearing.length === 0 || isSaving) return;
@@ -170,47 +183,105 @@ export default function OOTD() {
                         <h1 className="outfit" style={{ fontSize: '32px', fontWeight: '900', color: 'var(--text-main)', letterSpacing: '-1.5px', marginTop: '4px' }}>OOTD</h1>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)' }}>{today.getFullYear()}년 {today.getMonth() + 1}월</p>
-                        <p style={{ fontSize: '14px', fontWeight: '900', color: 'var(--primary)', marginTop: '2px' }}>{history.length} RECORDS</p>
+                        <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)' }}>{selectedDate.getFullYear()}년 {selectedDate.getMonth() + 1}월</p>
+                        <button onClick={() => setShowCalendar(!showCalendar)} style={{ background: 'none', border: 'none', padding: 0, marginTop: '2px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--primary)', marginLeft: 'auto' }}>
+                            <span style={{ fontSize: '14px', fontWeight: '900' }}>{history.length} RECORDS</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{showCalendar ? 'expand_less' : 'calendar_month'}</span>
+                        </button>
                     </div>
                 </div>
 
-                {/* Calendar Strip */}
-                <div style={{ padding: '24px 16px 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        {dates.map((d) => (
-                            <motion.button 
-                                key={`${d.year}-${d.month}-${d.day}`} 
-                                whileTap={{ scale: 0.92 }}
-                                onClick={() => { setSelectedDay(d.day); setActiveTab('record'); }}
-                                className={selectedDay === d.day ? "" : "glass-panel"}
-                                style={{
-                                    minWidth: '54px', height: '80px', flexShrink: 0, border: selectedDay === d.day ? 'none' : '1px solid var(--border-glass)', cursor: 'pointer',
-                                    borderRadius: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px',
-                                    backgroundColor: selectedDay === d.day ? 'var(--primary)' : 'var(--bg-card)',
-                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    position: 'relative',
-                                    boxShadow: selectedDay === d.day ? `0 8px 16px var(--primary-glow)` : 'none',
-                                }}
-                            >
-                                <span style={{ fontSize: '10px', fontWeight: '800', color: selectedDay === d.day ? 'rgba(255,255,255,0.8)' : d.isToday ? 'var(--primary)' : 'var(--text-muted)' }}>
-                                    {d.dow}
-                                </span>
-                                <span style={{ fontSize: '18px', fontWeight: '900', color: selectedDay === d.day ? '#fff' : 'var(--text-main)' }}>
-                                    {d.day}
-                                </span>
-                                {d.hasOOTD && selectedDay !== d.day && (
-                                    <div style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: 'var(--primary)', position: 'absolute', bottom: '10px' }} />
-                                )}
-                            </motion.button>
-                        ))}
-                    </div>
-                </div>
+                {/* Calendar View Toggle */}
+                <AnimatePresence>
+                    {showCalendar ? (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            style={{ overflow: 'hidden', padding: '0 24px' }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 10px 0' }}>
+                                <button onClick={prevMonth} style={{ background: 'none', border: 'none', color: 'var(--text-main)', padding: '4px' }}><span className="material-symbols-outlined">chevron_left</span></button>
+                                <span className="outfit" style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--text-main)' }}>{currentMonthDate.getFullYear()}. {currentMonthDate.getMonth() + 1}</span>
+                                <button onClick={nextMonth} style={{ background: 'none', border: 'none', color: 'var(--text-main)', padding: '4px' }}><span className="material-symbols-outlined">chevron_right</span></button>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '8px' }}>
+                                {DAYS_KR.map(day => (
+                                    <div key={day} style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 'bold' }}>{day}</div>
+                                ))}
+                                {Array.from({ length: getFirstDayOfMonth(currentMonthDate.getFullYear(), currentMonthDate.getMonth()) }).map((_, i) => (
+                                    <div key={`empty-${i}`} />
+                                ))}
+                                {Array.from({ length: getDaysInMonth(currentMonthDate.getFullYear(), currentMonthDate.getMonth()) }).map((_, i) => {
+                                    const d = i + 1;
+                                    const dateKey = `${currentMonthDate.getFullYear()}-${currentMonthDate.getMonth() + 1}-${d}`;
+                                    const hasOOTD = !!historyMap[dateKey];
+                                    const isSel = selectedDate.getDate() === d && selectedDate.getMonth() === currentMonthDate.getMonth() && selectedDate.getFullYear() === currentMonthDate.getFullYear();
+                                    const isTod = today.getDate() === d && today.getMonth() === currentMonthDate.getMonth() && today.getFullYear() === currentMonthDate.getFullYear();
+                                    return (
+                                        <motion.button
+                                            key={d}
+                                            whileTap={{ scale: 0.9 }}
+                                            onClick={() => {
+                                                setSelectedDate(new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth(), d));
+                                                setActiveTab('record');
+                                            }}
+                                            style={{
+                                                aspectRatio: '1', border: isSel ? 'none' : '1px solid var(--border-glass)', borderRadius: '12px',
+                                                backgroundColor: isSel ? 'var(--primary)' : 'var(--bg-card)',
+                                                color: isSel ? 'white' : (isTod ? 'var(--primary)' : 'var(--text-main)'),
+                                                fontWeight: isSel || isTod ? 'bold' : 'normal',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', cursor: 'pointer'
+                                            }}
+                                        >
+                                            {d}
+                                            {hasOOTD && !isSel && <div style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: 'var(--primary)', position: 'absolute', bottom: '6px' }} />}
+                                        </motion.button>
+                                    );
+                                })}
+                            </div>
+                        </motion.div>
+                    ) : (
+                        <div style={{ padding: '24px 16px 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                {dates.map((d) => {
+                                    const isSel = selectedDate.getDate() === d.day && selectedDate.getMonth() === d.month - 1 && selectedDate.getFullYear() === d.year;
+                                    return (
+                                        <motion.button 
+                                            key={`${d.year}-${d.month}-${d.day}`} 
+                                            whileTap={{ scale: 0.92 }}
+                                            onClick={() => { setSelectedDate(d.dateObj); setActiveTab('record'); }}
+                                            className={isSel ? "" : "glass-panel"}
+                                            style={{
+                                                minWidth: '54px', height: '80px', flexShrink: 0, border: isSel ? 'none' : '1px solid var(--border-glass)', cursor: 'pointer',
+                                                borderRadius: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                                                backgroundColor: isSel ? 'var(--primary)' : 'var(--bg-card)',
+                                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                position: 'relative',
+                                                boxShadow: isSel ? `0 8px 16px var(--primary-glow)` : 'none',
+                                            }}
+                                        >
+                                            <span style={{ fontSize: '10px', fontWeight: '800', color: isSel ? 'rgba(255,255,255,0.8)' : d.isToday ? 'var(--primary)' : 'var(--text-muted)' }}>
+                                                {d.dow}
+                                            </span>
+                                            <span style={{ fontSize: '18px', fontWeight: '900', color: isSel ? '#fff' : 'var(--text-main)' }}>
+                                                {d.day}
+                                            </span>
+                                            {d.hasOOTD && !isSel && (
+                                                <div style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: 'var(--primary)', position: 'absolute', bottom: '10px' }} />
+                                            )}
+                                        </motion.button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </AnimatePresence>
             </div>
 
             <AnimatePresence mode="wait">
                 <motion.div 
-                    key={selectedDay} 
+                    key={selectedDateKey} 
                     initial={{ opacity: 0, y: 15 }} 
                     animate={{ opacity: 1, y: 0 }} 
                     exit={{ opacity: 0, y: -15 }} 
@@ -277,7 +348,7 @@ export default function OOTD() {
                                     </div>
                                 )}
                                 <h2 className="outfit" style={{ fontSize: '30px', fontWeight: '900', color: 'var(--text-main)', letterSpacing: '-1px', lineHeight: 1 }}>
-                                    {new Date(today.getFullYear(), today.getMonth(), selectedDay).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}
+                                    {selectedDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}
                                 </h2>
                                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '8px', fontWeight: '600' }}>
                                     {currentRecord ? '오늘의 완벽한 룩' : isToday ? '어떤 스타일로 하루를 시작할까요?' : '기록이 준비되지 않았습니다'}

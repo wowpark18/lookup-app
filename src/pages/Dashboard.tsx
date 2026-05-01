@@ -30,6 +30,8 @@ export default function Dashboard() {
     ]);
     const [briefing, setBriefing] = useState<string>("오늘의 날씨를 확인하고 코디를 준비중이에요...");
     const [showSuccess] = useState(false);
+    
+    const [selectedSchedule, setSelectedSchedule] = useState<string>('일상/휴식');
 
     const [profile, setProfile] = useState<any>(null);
 
@@ -56,7 +58,7 @@ export default function Dashboard() {
                 localStorage.setItem('last_weather', JSON.stringify(w));
 
                 const uid = auth.currentUser?.uid || "guest-user";
-                const r = await getAIRecommendations(uid, w);
+                const r = await getAIRecommendations(uid, w, '일상/휴식');
                 if (r && r.length > 0) {
                     setOutfits(r);
                     if (r[0].aiMessage) setBriefing(r[0].aiMessage);
@@ -80,11 +82,12 @@ export default function Dashboard() {
     const [isShuffling, setIsShuffling] = useState(false);
     const [isRegistering, setIsRegistering] = useState(false);
 
-    const handleShuffle = async () => {
+    const handleShuffle = async (schedule?: string) => {
         setIsShuffling(true);
         try {
             const uid = auth.currentUser?.uid || "guest-user";
-            const r = await getAIRecommendations(uid, weather);
+            const currentSchedule = typeof schedule === 'string' ? schedule : selectedSchedule;
+            const r = await getAIRecommendations(uid, weather, currentSchedule);
             if (r && r.length > 0) {
                 setOutfits(r);
                 setCurrentSlide(0); 
@@ -95,6 +98,19 @@ export default function Dashboard() {
             setTimeout(() => setIsShuffling(false), 500);
         }
     };
+
+    const handleScheduleChange = (schedule: string) => {
+        setSelectedSchedule(schedule);
+        handleShuffle(schedule);
+    };
+
+    const SCHEDULE_OPTIONS = [
+        { id: '일상/휴식', label: '일상/휴식', icon: 'coffee' },
+        { id: '오피스/출근', label: '오피스', icon: 'work' },
+        { id: '데이트', label: '데이트', icon: 'favorite' },
+        { id: '운동/야외', label: '운동', icon: 'fitness_center' },
+        { id: '특별한 약속', label: '특별한 약속', icon: 'celebration' }
+    ];
 
     const handleWearComplete = async () => {
         if (!outfits[currentSlide] || isRegistering) return;
@@ -261,6 +277,31 @@ export default function Dashboard() {
                         </AnimatePresence>
                     </motion.div>
                 </motion.div>
+            </div>
+
+            {/* 2.5 Schedule Selector */}
+            <div style={{ padding: '16px 20px 8px 20px', overflowX: 'auto', display: 'flex', gap: '8px', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="schedule-scroll">
+                <style>{`.schedule-scroll::-webkit-scrollbar { display: none; }`}</style>
+                {SCHEDULE_OPTIONS.map((opt) => (
+                    <motion.div
+                        key={opt.id}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleScheduleChange(opt.id)}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            padding: '8px 16px', borderRadius: '20px',
+                            backgroundColor: selectedSchedule === opt.id ? 'var(--primary)' : 'var(--bg-card)',
+                            color: selectedSchedule === opt.id ? 'white' : 'var(--text-main)',
+                            border: `1px solid ${selectedSchedule === opt.id ? 'var(--primary)' : 'var(--border-glass)'}`,
+                            whiteSpace: 'nowrap', cursor: 'pointer',
+                            boxShadow: selectedSchedule === opt.id ? '0 4px 12px var(--primary-glow)' : 'none',
+                            transition: 'all 0.3s ease'
+                        }}
+                    >
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{opt.icon}</span>
+                        <span className="outfit" style={{ fontSize: '12px', fontWeight: 700 }}>{opt.label}</span>
+                    </motion.div>
+                ))}
             </div>
 
             {/* 3. Hero Card Section - Immersive Editorial Layout */}

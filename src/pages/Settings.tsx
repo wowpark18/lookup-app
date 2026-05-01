@@ -14,6 +14,9 @@ export default function Settings() {
     const [showColorPicker, setShowColorPicker] = useState(false);
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
+    const [selectedBodyShape, setSelectedBodyShape] = useState<string>('');
+    const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
+
     const [personalColor, setPersonalColor] = useState(localStorage.getItem('personal_color') || 'spring');
 
     useEffect(() => {
@@ -62,7 +65,9 @@ export default function Settings() {
                 waist: Number(formData.get('waist')),
                 hip: Number(formData.get('hip')),
                 legLength: Number(formData.get('legLength')),
-            }
+            },
+            bodyShape: selectedBodyShape,
+            preferredStyles: selectedStyles
         };
 
         await saveUserProfile(auth.currentUser.uid, newData);
@@ -71,8 +76,16 @@ export default function Settings() {
         alert("프로필 정보가 업데이트되었습니다! 😎");
     };
 
+    const openProfileModal = () => {
+        if (profile) {
+            setSelectedBodyShape(profile.bodyShape || '');
+            setSelectedStyles(profile.preferredStyles || []);
+        }
+        setShowProfileModal(true);
+    };
+
     const sections = [
-        { icon: <User size={20} />, title: "프로필 설정", desc: "닉네임, 체형 데이터 관리", onClick: () => setShowProfileModal(true) },
+        { icon: <User size={20} />, title: "프로필 설정", desc: "닉네임, 체형 및 스타일 관리", onClick: openProfileModal },
         { icon: <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'linear-gradient(45deg, #FFB7B7, #7EB5FF, #FFD966, #A27B5C)' }} />, title: "퍼스널 컬러", desc: colors.find(c => c.id === personalColor)?.name || "나에게 어울리는 톤 설정", onClick: () => setShowColorPicker(true) },
         { icon: <CreditCard size={20} />, title: "구독 관리", desc: "Look-UP Pro 멤버십 상태", onClick: () => setShowSubscriptionModal(true) },
         { icon: <Bell size={20} />, title: "알림 설정", desc: "코디 추천, 쇼핑 혜택 알림", onClick: () => {} },
@@ -184,6 +197,31 @@ export default function Settings() {
                                                 <input name={f.name} type="number" defaultValue={(profile?.measurements as any)?.[f.name] || ''} style={{ padding: '16px', borderRadius: '16px', border: '1px solid var(--border-glass)', background: 'rgba(0,0,0,0.02)', fontSize: '15px', fontWeight: 700, color: 'var(--text-main)', outline: 'none' }} />
                                             </div>
                                         ))}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        <label style={{ fontSize: '11px', fontWeight: 900, color: 'var(--primary)', letterSpacing: '1.5px' }}>BODY SHAPE (체형)</label>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                            {['역삼각형', '직사각형', '타원형', '모래시계형', '하체비만형', '마른체형'].map(shape => (
+                                                <button type="button" key={shape} onClick={() => setSelectedBodyShape(shape)} style={{ padding: '10px 16px', borderRadius: '20px', border: selectedBodyShape === shape ? 'none' : '1px solid var(--border-glass)', backgroundColor: selectedBodyShape === shape ? 'var(--primary)' : 'var(--bg-card)', color: selectedBodyShape === shape ? '#fff' : 'var(--text-main)', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                                                    {shape}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        <label style={{ fontSize: '11px', fontWeight: 900, color: 'var(--primary)', letterSpacing: '1.5px' }}>PREFERRED STYLES (선호 스타일)</label>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                            {['미니멀', '캐주얼', '스트릿', '비즈니스', '아메카지', '고프코어', '포멀', '빈티지'].map(style => {
+                                                const isSelected = selectedStyles.includes(style);
+                                                return (
+                                                    <button type="button" key={style} onClick={() => {
+                                                        setSelectedStyles(prev => isSelected ? prev.filter(s => s !== style) : [...prev, style]);
+                                                    }} style={{ padding: '10px 16px', borderRadius: '20px', border: isSelected ? 'none' : '1px solid var(--border-glass)', backgroundColor: isSelected ? 'var(--primary)' : 'var(--bg-card)', color: isSelected ? '#fff' : 'var(--text-main)', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                                                        {style} {isSelected && '✓'}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
                                     </div>
                                     <button type="submit" style={{ marginTop: '20px', width: '100%', padding: '20px', borderRadius: '24px', background: 'var(--primary)', color: '#fff', border: 'none', fontWeight: 900, fontSize: '16px', boxShadow: '0 8px 24px var(--primary-glow)' }}>SAVE CHANGES</button>
                                 </div>
